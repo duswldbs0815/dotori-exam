@@ -76,6 +76,7 @@ export function StartScreen() {
   return (
     <Shell>
       {header}
+      <WhyBanner />
       <main className="flex flex-wrap items-stretch gap-7">
         <section className={`${card} flex min-w-0 flex-[999_1_560px] flex-col gap-6 p-10 max-sm:p-6`}>
           <div className="flex flex-col gap-2">
@@ -180,6 +181,46 @@ export function StartScreen() {
         </aside>
       </main>
     </Shell>
+  );
+}
+
+/** 왜 만들었나: 현장 문제(근거 통계) + 핵심 아이디어. 접어 둘 수 있음 (docs/00-overview.md) */
+function WhyBanner() {
+  const [open, setOpen] = useState(true);
+  const facts: [string, string, string][] = [
+    ["289명", "교사 모두 AI 글과 학생 글 구분 실패", "Fleckenstein 외, 2024"],
+    ["94%", "AI가 쓴 답안이 걸리지 않음", "리딩대, 2024"],
+    ["26%", "정확도 낮아 OpenAI 탐지기 폐지", "OpenAI, 2023"],
+  ];
+  return (
+    <section aria-label="도토리 시험지를 만든 이유" className="flex flex-col gap-4 rounded-[28px] bg-ink px-8 py-6 text-white max-sm:px-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <span className="text-[13px] font-bold text-[#F6D7B3]">현장의 문제</span>
+          <p className="m-0 font-display text-[26px] leading-snug max-sm:text-[22px]">선생님은 AI가 쓴 글과 학생이 쓴 글을 구분할 수 없어요.</p>
+        </div>
+        <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="cursor-pointer rounded-full border border-white/30 bg-transparent px-3.5 py-1.5 text-[13px] text-white/80">
+          {open ? "접기" : "자세히"}
+        </button>
+      </div>
+      {open && (
+        <>
+          <ul className="m-0 grid list-none grid-cols-3 gap-3 p-0 max-md:grid-cols-1">
+            {facts.map(([n, t, src]) => (
+              <li key={src} className="flex flex-col gap-1 rounded-2xl bg-white/10 px-4 py-3">
+                <span className="font-display text-[30px] leading-none text-[#F6D7B3]">{n}</span>
+                <span className="text-sm">{t}</span>
+                <span className="text-[11px] text-white/60">{src}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="m-0 text-[15px] leading-relaxed text-white/90">
+            그래서 <b className="text-[#F6D7B3]">잡아내지 말고, 과정을 남기기로</b> 했어요. AI를 시험지 안에 열어 두고, 질문할 때마다 도토리 1개를 써요.
+            어디서 무엇을 물었는지와 질문 전후의 글이 남아, 선생님은 결과가 아니라 <b>생각의 과정</b>을 평가할 수 있어요.
+          </p>
+        </>
+      )}
+    </section>
   );
 }
 

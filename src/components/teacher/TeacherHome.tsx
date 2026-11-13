@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { api, ApiError } from "@/lib/api-client";
+import { api, ApiError, SHORT_ITEMS } from "@/lib/api-client";
 import type { ClassReportResponse } from "@/lib/types";
 import { card, ErrorBox, Loading } from "../ui";
 import { TeacherLogin, TeacherShell } from "./TeacherShell";
@@ -11,11 +11,12 @@ import { TeacherLogin, TeacherShell } from "./TeacherShell";
 type Row = ClassReportResponse["students"][number];
 type Filter = "all" | "submitted" | "writing";
 
-/** 교사 첫 화면: 로그인 확인 → 학생 목록 (반 전체 집계 화면은 P2라 만들지 않음) */
+/** 교사 첫 화면: 로그인 확인 → 반 전체 요약 → 학생 목록 */
 export function TeacherHome() {
   const search = useSearchParams();
   const [auth, setAuth] = useState<"checking" | "in" | "out">("checking");
   const [rows, setRows] = useState<Row[] | null>(null);
+  const [summary, setSummary] = useState<ClassReportResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
 
@@ -24,6 +25,7 @@ export function TeacherHome() {
     try {
       const r = await api.classReport();
       setRows(r.students);
+      setSummary(r);
       setAuth("in");
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) setAuth("out");
@@ -57,6 +59,7 @@ export function TeacherHome() {
         <h1 className="m-0 font-display text-[34px] font-normal">「진달래꽃」 감상문 리포트</h1>
       </div>
       {error && <ErrorBox>{error}</ErrorBox>}
+      {summary && summary.students.length > 0 && <ClassSummary data={summary} />}
       <section aria-label="학생 목록" className={`${card} flex flex-col gap-4 p-6 max-sm:p-4`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div role="tablist" className="flex flex-wrap gap-1.5">
@@ -132,5 +135,81 @@ export function TeacherHome() {
         <span className="text-xs text-muted">가상 학생 데이터만 사용해요.</span>
       </section>
     </TeacherShell>
+  );
+}
+
+/** 반 전체 요약: 숫자 카드 4개 + 항목별 질문(목표 vs 실제) + 질문 방식 분포 */
+function ClassSummary({ data }: { data: ClassReportResponse }) {
+  const n = data.students.length;
+  const submitted = data.students.filter((s) => s.submitted).length;
+  const totalUsed = data.students.reduce((a, s) => a + s.totalUsed, 0);
+  const avg = n ? (totalUsed / n).toFixed(1) : "0";
+  const blockedStudents = data.students.filter((s) => s.blockedCount > 0).length;
+  const { planned, used } = data.acornsByOutlineItem;
+  const itemMax = Math.max(1, ...planned, ...used);
+  const busiest = used.indexOf(Math.max(...used));
+  const typeTotals = data.matrix.types.map((_, ti) => data.matrix.counts.reduce((a, row) => a + row[ti], 0));
+  const typeSum = typeTotals.reduce((a, b) => a + b, 0);
+
+  const stats: [string, string, string?][] = [
+    [`${submitted} / ${n}`, "제출"],
+    [avg, "평균 도토리"],
+    [String(data.blockedTotal), "대신 써 달라는 요청 (차단)", data.blockedTotal > 0 ? "text-alert" : undefined],
+    [String(blockedStudents), "차단이 있었던 학생", blockedStudents > 0 ? "text-alert" : undefined],
+  ];
+
+  return (
+    <section aria-label="반 전체 요약" className="flex flex-col gap-4">
+      <div className="grid grid-cols-4 gap-3 max-md:grid-cols-2">
+        {stats.map(([v, l, tone]) => (
+          <div key={l} className={`${card} flex flex-col gap-1 px-5 py-4`}>
+            <span className={`font-display text-[32px] leading-none ${tone ?? "text-brown"}`}>{v}</span>
+            <span className="text-[13px] text-muted">{l}</span>
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-4">
+        <div className={`${card} flex min-w-0 flex-[1_1_420px] flex-col gap-3 p-6`}>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="m-0 font-display text-xl font-normal">어디서 질문이 많았나</h2>
+            {used[busiest] > 0 && (
+              <span className="text-[13px] text-sub">
+                가장 많이 물은 항목: <b className="text-brown">{SHORT_ITEMS[busiest]}</b>
+              </span>
+            )}
+          </div>
+          {SHORT_ITEMS.map((label, i) => (
+            <div key={label} className="flex items-center gap-3 text-sm">
+              <span className="w-24 flex-none text-sub">{label}</span>
+              <div className="relative h-3.5 flex-1 rounded-full bg-[#F3E6D3]">
+                <div className="absolute inset-y-0 left-0 rounded-full border-2 border-dashed border-nut" style={{ width: `${(planned[i] / itemMax) * 100}%` }} />
+                <div className={`absolute inset-y-0.5 left-0 rounded-full ${i === busiest && used[i] > 0 ? "bg-brown" : "bg-nut"}`} style={{ width: `${(used[i] / itemMax) * 100}%` }} />
+              </div>
+              <span className="w-20 flex-none text-right text-xs text-muted">
+                {used[i]} / 목표 {planned[i]}
+              </span>
+            </div>
+          ))}
+          <span className="text-xs text-muted">채운 막대는 실제 질문, 점선은 학생들이 정한 목표의 합이에요. 수업에서 더 다룰 부분을 찾는 데 써 보세요.</span>
+        </div>
+        <div className={`${card} flex min-w-0 flex-[1_1_320px] flex-col gap-3 p-6`}>
+          <h2 className="m-0 font-display text-xl font-normal">어떤 질문을 했나</h2>
+          {typeSum === 0 ? (
+            <span className="text-sm text-muted">아직 분류된 질문이 없어요.</span>
+          ) : (
+            data.matrix.types.map((t, i) => (
+              <div key={t} className="flex items-center gap-3 text-sm">
+                <span className="w-28 flex-none text-sub">{t}</span>
+                <div className="h-3.5 flex-1 rounded-full bg-[#F3E6D3]">
+                  <div className={`h-3.5 rounded-full ${t === "대신 작성 요청" ? "bg-alert" : "bg-leaf"}`} style={{ width: `${(typeTotals[i] / typeSum) * 100}%` }} />
+                </div>
+                <span className="w-10 flex-none text-right text-xs text-muted">{typeTotals[i]}</span>
+              </div>
+            ))
+          )}
+          <span className="text-xs text-muted">질문 수가 많거나 목표와 다르다고 부적절한 것은 아니에요. 판정이 아닌 수업 단서예요.</span>
+        </div>
+      </div>
+    </section>
   );
 }

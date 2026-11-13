@@ -277,7 +277,7 @@ export function TeacherReport() {
           <h2 className="m-0 font-display text-xl font-normal">성찰지</h2>
           {data.reflection ? (
             <ol className="m-0 flex list-none flex-col gap-2.5 p-0 text-sm">
-              {["도토리를 가장 많이 쓴 항목과 이유", "가장 도움이 된 질문", "AI 답을 받고 글이 어떻게 달라졌나", "다음엔 도토리를 어떻게 쓰고 싶나"].map((t, i) => (
+              {data.exam.reflectionQuestions.map((t, i) => (
                 <li key={t} className="flex flex-col gap-0.5">
                   <span className="text-xs text-muted">
                     {i + 1}. {t}
