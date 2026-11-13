@@ -1,15 +1,16 @@
 # 도토리 시험지
 
-AI 사용의 흔적이 남는 수행평가 플랫폼. 2026 INHA AX-EDU 해커톤 팀 도토리.
+AI 사용의 흔적이 남는 수행평가 프로그램. 2026 INHA AX-EDU 해커톤 팀 도토리.
 
-학생은 시험지 안의 AI에게 정해진 질문 한도 안에서 질문할 수 있고, AI는 정답 대신 개념·방향·검토만 답합니다. 모든 질문, 답변, 질문 전후의 글, 최종 답안이 기록되고, 교사는 결과물과 과정을 함께 보고 평가합니다. 결과 보고서는 슈퍼스쿨로 옮깁니다.
+학생은 「진달래꽃」 비평문을 쓰다가 시험지 안의 AI에게 도토리 1개씩 내고 질문합니다. AI는 3문장 이내로 답하고, 글을 대신 써 달라는 요청은 차단합니다(도토리 차감 없음). 질문한 위치·시간·질문·답과 질문 전후의 글이 기록되어, 교사에게만 리포트로 보입니다.
 
 ## 흐름
 
-1. 교사: 시험 만들기 (문항, 정답, 채점 기준, 질문 한도, AI 규칙)
-2. 학생: 응시 (본인 인증 → 잠금 모드) → AI에게 질문 → 최종 답안 제출
-3. 평가: AI 가채점 (답안 + 과정) → 교사 확정
-4. 보고서: 학생별 결과 보고서 → 슈퍼스쿨
+1. 시험 시작: 본인 확인(페이스페이 모의) + 기록 안내
+2. ① 개요: 4항목 작성 (AI 없이)
+3. ② 글쓰기: 문장을 드래그해 질문 → 도토리 1개 사용 → AI 답
+4. ③ 성찰지: 항목별 도토리 그래프 + 성찰 4문항 → 제출
+5. 교사 리포트: 글 + 여백 메모 → 메모를 누르면 질문 전후 비교
 
 ## 개발 시작
 
@@ -19,25 +20,27 @@ cp .env.example .env.local   # 키 채우기 (커밋 금지)
 npm run dev
 ```
 
-DB 초안은 `supabase/schema.sql`에 있습니다. Supabase SQL Editor에서 실행하세요.
+- AI 호출: `src/lib/llm.ts` (BAZE API Gateway). 연결 확인은 `GET /api/health/llm`
+- 공용 타입: `src/lib/types.ts`
+- 시험 설정 (도토리 개수, AI 답변 문장 수 등 미정 값): `src/lib/exam-config.ts`
+- 저장: 시연은 로컬 실행 + JSON 파일. 웹 배포 시 Supabase로 교체 (`supabase/schema.sql`은 확장용 초안)
 
-## API (프론트·백엔드 합의용)
+## API
 
-| 우선 | API | 기능 |
+**[docs/API.md](docs/API.md)** 에 요청·응답 형식이 있습니다. 프론트와 백엔드는 이 문서와 `src/lib/types.ts`를 기준으로 맞춥니다.
+
+| API | 기능 | 우선 |
 |---|---|---|
-| 1 | `POST /api/exams`, `GET /api/exams/:id` | 시험 만들기, 조회 |
-| 1 | `POST /api/attempts/start` | 응시 시작 (질문 한도 세팅) |
-| 1 | `POST /api/chat` | 질문 처리: 분류 → 정답 요구면 코칭(차감 없음) → 답변 생성 → 서버 검사 → 저장·차감 |
-| 1 | `POST /api/snapshots` | 10초 자동 저장, 질문 시점 저장 |
-| 1 | `POST /api/attempts/:id/submit` | 최종 답안 제출 |
-| 2 | `POST /api/attempts/:id/grade` | AI 가채점 |
-| 2 | `PATCH /api/grades/:id` | 교사 점수 확정, 코멘트 |
-| 2 | `GET /api/exams/:id/dashboard` | 학생 상태, 단계 × 방식 질문 지도, 문제별 질문 배분 |
-| 2 | `GET /api/attempts/:id/report` | 학생 리포트 데이터 |
-| 3 | `POST /api/events` | 붙여넣기, 창 이탈 기록 |
-| 3 | `GET /api/attempts/:id/report.pdf` | 보고서 PDF |
+| `POST /api/exam/start` | 응시 시작, 본인 확인 기록 | P0 |
+| `POST /api/outline` | 개요 4항목 저장 | P1 |
+| `POST /api/draft` | 글 저장 (10초마다) | P0 |
+| `POST /api/ask` | 질문 → 차단 판별 → 답변 → 분류 → 직전 글 저장 → 도토리 차감 | P0 |
+| `GET /api/attempt/:attemptId` | 학생 화면 상태 복원, 항목별 도토리 수 | P0 |
+| `POST /api/submit` | 최종 글과 성찰지 제출 | P0 |
+| `GET /api/report/:studentId` | 교사용 학생 리포트 (메모, 전후 비교, 작성 경로) | P0 |
+| `GET /api/report/class` | 교사용 반 전체 집계 | P2 |
 
 ## 주의
 
-- API 키와 `.env.local`은 절대 커밋하지 않습니다.
-- `exam_items.answer_key`는 서버에서만 쓰고 학생 화면으로 보내지 않습니다.
+- API 키, `.env.local`, `.claude/settings.local.json`은 절대 커밋하지 않습니다.
+- 학생 화면 응답에는 분류·작성 경로·전후 비교를 넣지 않습니다.
