@@ -24,7 +24,7 @@ const EAT: [Eat, number][] = [
 
 // 머리와 몸이 이어진 한 덩어리 (큰 머리 + 아래로 이어지는 몸, 마스코트 비율)
 const SILHOUETTE =
-  "M58 20 C83 20 100 35 100 57 C100 71 93 80 85 85 C89 91 90 99 88 104 C85 111 74 113 58 113 C42 113 31 111 28 104 C26 99 27 91 31 85 C23 80 16 71 16 57 C16 35 33 20 58 20 Z";
+  "M58 28 C79 28 95 41 95 60 C95 71 90 79 84 83 C91 89 93 98 91 105 C88 112 75 114 58 114 C41 114 28 112 25 105 C23 98 25 89 32 83 C26 79 21 71 21 60 C21 41 37 28 58 28 Z";
 const TAIL_PATH = "M74 102 C100 106 116 82 110 58 C105 38 86 30 78 44 C90 46 96 60 91 74 C87 86 78 90 70 96 Z";
 const LINE = "#B66A2E";
 
@@ -198,6 +198,7 @@ export function Squirrel({ size = 88, eats = 0, wear }: { size?: number; eats?: 
 
           <g className="sq-breathe">
             {/* 동그란 귀 */}
+            <g transform="translate(58 84) scale(.88) translate(-58 -84)">
             <g className="sq-ear-l">
               <circle cx="31" cy="31" r="9.5" fill={url("fur")} stroke={LINE} strokeOpacity=".4" strokeWidth="1.4" />
               <circle cx="31.5" cy="32" r="5" fill={url("ear")} />
@@ -206,10 +207,12 @@ export function Squirrel({ size = 88, eats = 0, wear }: { size?: number; eats?: 
               <circle cx="85" cy="31" r="9.5" fill={url("fur")} stroke={LINE} strokeOpacity=".4" strokeWidth="1.4" />
               <circle cx="84.5" cy="32" r="5" fill={url("ear")} />
             </g>
+            </g>
 
             {/* 머리와 몸이 이어진 한 덩어리 */}
             <path d={SILHOUETTE} fill={url("fur")} stroke={LINE} strokeOpacity=".4" strokeWidth="1.4" />
-            <ellipse cx="58" cy="101" rx="17" ry="11" fill={url("belly")} />
+            <ellipse cx="58" cy="101" rx="20" ry="12" fill={url("belly")} />
+            <g transform="translate(58 84) scale(.88) translate(-58 -84)">
             <path d="M52 21.5 Q58 19.5 64 21.5 L62 35 Q58 37 54 35 Z" fill="#C97A3A" opacity=".4" />
             <ellipse cx="38" cy="37" rx="11" ry="6" fill="#FFFFFF" opacity=".35" transform="rotate(-28 38 37)" />
 
@@ -283,11 +286,14 @@ export function Squirrel({ size = 88, eats = 0, wear }: { size?: number; eats?: 
               </g>
             )}
 
+            </g>
+
             {/* 발 */}
-            <ellipse cx="46" cy="110" rx="7" ry="4" fill="#F0A865" stroke={LINE} strokeOpacity=".4" strokeWidth="1.2" />
-            <ellipse cx="70" cy="110" rx="7" ry="4" fill="#F0A865" stroke={LINE} strokeOpacity=".4" strokeWidth="1.2" />
+            <ellipse cx="45" cy="111" rx="7.5" ry="4" fill="#F0A865" stroke={LINE} strokeOpacity=".4" strokeWidth="1.2" />
+            <ellipse cx="71" cy="111" rx="7.5" ry="4" fill="#F0A865" stroke={LINE} strokeOpacity=".4" strokeWidth="1.2" />
 
             {/* 도토리 + 앞발 */}
+            <g transform="translate(0 3)">
             <g style={{ transformBox: "view-box", transformOrigin: "58px 92px", transition: "transform .2s ease-out, opacity .25s", ...nut }}>
               <path d="M58 84 v-3" stroke="#5A3418" strokeWidth="1.6" strokeLinecap="round" />
               <path d="M49 89 Q49 82 58 82 Q67 82 67 89 Q67 91 58 91 Q49 91 49 89 Z" fill={url("cap")} />
@@ -297,6 +303,8 @@ export function Squirrel({ size = 88, eats = 0, wear }: { size?: number; eats?: 
             <g style={{ transformBox: "view-box", transformOrigin: "58px 93px", transition: `transform .24s ${JELLY}`, transform: paws }}>
               <ellipse cx="47" cy="93" rx="5.5" ry="4.5" fill="#F6B36F" stroke={LINE} strokeOpacity=".4" strokeWidth="1.2" />
               <ellipse cx="69" cy="93" rx="5.5" ry="4.5" fill="#F6B36F" stroke={LINE} strokeOpacity=".4" strokeWidth="1.2" />
+            </g>
+
             </g>
 
             <g opacity={eat === "chewB" || eat === "gulp" ? 1 : 0} fill="#C27C3E" style={{ transition: "opacity .1s" }}>
