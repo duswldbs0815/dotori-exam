@@ -111,7 +111,7 @@ export async function requireOwner(rec: { attemptId: string; keyHash?: string | 
 // 시연용 간이 방식이라 실제 도입 시에는 학교 계정 로그인으로 바꿉니다.
 
 export const ME_COOKIE = "dotori_me";
-const ME_MAX_AGE = 60 * 60 * 24 * 7; // 7일
+const ME_MAX_AGE = 60 * 60 * 6; // 6시간 (학교 공용 컴퓨터에서 다음 학생이 열지 않게)
 
 function meSign(payload: string): string {
   return createHmac("sha256", teacherCode()).update(`dotori-me-v1:${payload}`).digest("hex");
@@ -122,7 +122,7 @@ export async function setMeCookie(studentId: string, name: string) {
   (await cookies()).set(ME_COOKIE, `${payload}.${meSign(payload)}`, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: await isHttps(),
     path: "/",
     maxAge: ME_MAX_AGE,
   });
