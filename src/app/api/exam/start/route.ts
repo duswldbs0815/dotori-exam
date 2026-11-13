@@ -1,4 +1,5 @@
 import { newStudentKey, setStudentCookie } from "@/lib/auth";
+import { MAX, checkLength } from "@/lib/limits";
 import { EXAM_CONFIG } from "@/lib/exam-config";
 import { fail, handle, nowIso, readJson } from "@/lib/http";
 import { isValidId, updateAttempt } from "@/lib/store";
@@ -10,6 +11,7 @@ export const POST = handle(async (req: Request) => {
   if (!isValidId(body.studentId)) fail(400, "학번은 영문·숫자·-·_ 1~32자여야 해요.");
   if (typeof body.name !== "string" || !body.name.trim()) fail(400, "이름이 필요해요.");
   const name = body.name.trim();
+  checkLength(name, MAX.name, "이름");
 
   // 들어올 때마다 새 열쇠 발급 (다시 들어오면 이전 브라우저의 열쇠는 더 이상 안 통함)
   const { key, keyHash } = newStudentKey();

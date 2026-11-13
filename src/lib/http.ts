@@ -13,9 +13,13 @@ export function fail(status: number, message: string): never {
   throw new HttpError(status, message);
 }
 
+const MAX_BODY_CHARS = 100_000; // 요청 하나의 최대 크기 (글 5,000자 × 두 벌보다 넉넉히)
+
 export async function readJson<T>(req: Request): Promise<T> {
+  const text = await req.text();
+  if (text.length > MAX_BODY_CHARS) fail(413, "보낸 내용이 너무 커요.");
   try {
-    return (await req.json()) as T;
+    return JSON.parse(text) as T;
   } catch {
     fail(400, "요청 본문이 올바른 JSON이 아닙니다.");
   }

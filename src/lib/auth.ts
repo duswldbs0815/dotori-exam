@@ -13,9 +13,21 @@ function teacherCode(): string {
   return code;
 }
 
-/** 쿠키에 넣는 값: 교사 코드로 서명한 값 (코드를 모르면 만들 수 없음) */
+/** 쿠키에 넣는 값: "만료시각.서명". 교사 코드로 서명해서 코드를 모르면 만들 수 없고, 시간이 지나면 안 통함 */
+function sign(exp: number): string {
+  return createHmac("sha256", teacherCode()).update(`dotori-teacher-v2:${exp}`).digest("hex");
+}
+
 function token(): string {
-  return createHmac("sha256", teacherCode()).update("dotori-teacher-v1").digest("hex");
+  const exp = Date.now() + MAX_AGE * 1000;
+  return `${exp}.${sign(exp)}`;
+}
+
+function validToken(v: string): boolean {
+  const [expStr, sig] = v.split(".");
+  const exp = Number(expStr);
+  if (!Number.isFinite(exp) || exp <= Date.now() || !sig) return false;
+  return same(sig, sign(exp));
 }
 
 function same(a: string, b: string) {
@@ -44,7 +56,7 @@ export async function clearTeacherCookie() {
 
 export async function isTeacher(): Promise<boolean> {
   const v = (await cookies()).get(TEACHER_COOKIE)?.value;
-  return typeof v === "string" && same(v, token());
+  return typeof v === "string" && validToken(v);
 }
 
 /** 교사가 아니면 401 */
