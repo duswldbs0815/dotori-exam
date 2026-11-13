@@ -1,8 +1,13 @@
 // 서버 전용: 교사 코드 로그인 (해커톤용 간이 인증)
 // 실제 도입 시에는 슈퍼스쿨 계정 로그인으로 바꿉니다.
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { fail } from "./http";
+
+/** https로 들어온 요청이면 쿠키에 Secure 표시. (시연 때 http://192.168.x.x 로 접속해도 로그인되게) */
+async function isHttps(): Promise<boolean> {
+  return (await headers()).get("x-forwarded-proto")?.split(",")[0]?.trim() === "https";
+}
 
 export const TEACHER_COOKIE = "dotori_teacher";
 const MAX_AGE = 60 * 60 * 12; // 12시간
@@ -13,9 +18,21 @@ function teacherCode(): string {
   return code;
 }
 
-/** 쿠키에 넣는 값: 교사 코드로 서명한 값 (코드를 모르면 만들 수 없음) */
+/** 쿠키에 넣는 값: "만료시각.서명". 교사 코드로 서명해서 코드를 모르면 만들 수 없고, 시간이 지나면 안 통함 */
+function sign(exp: number): string {
+  return createHmac("sha256", teacherCode()).update(`dotori-teacher-v2:${exp}`).digest("hex");
+}
+
 function token(): string {
-  return createHmac("sha256", teacherCode()).update("dotori-teacher-v1").digest("hex");
+  const exp = Date.now() + MAX_AGE * 1000;
+  return `${exp}.${sign(exp)}`;
+}
+
+function validToken(v: string): boolean {
+  const [expStr, sig] = v.split(".");
+  const exp = Number(expStr);
+  if (!Number.isFinite(exp) || exp <= Date.now() || !sig) return false;
+  return same(sig, sign(exp));
 }
 
 function same(a: string, b: string) {
@@ -32,7 +49,7 @@ export async function setTeacherCookie() {
   (await cookies()).set(TEACHER_COOKIE, token(), {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: await isHttps(),
     path: "/",
     maxAge: MAX_AGE,
   });
@@ -44,7 +61,7 @@ export async function clearTeacherCookie() {
 
 export async function isTeacher(): Promise<boolean> {
   const v = (await cookies()).get(TEACHER_COOKIE)?.value;
-  return typeof v === "string" && same(v, token());
+  return typeof v === "string" && validToken(v);
 }
 
 /** 교사가 아니면 401 */
@@ -73,7 +90,7 @@ export async function setStudentCookie(attemptId: string, key: string) {
   (await cookies()).set(STUDENT_COOKIE, `${attemptId}.${key}`, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: await isHttps(),
     path: "/",
     maxAge: STUDENT_MAX_AGE,
   });

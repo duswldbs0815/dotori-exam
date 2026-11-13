@@ -2,6 +2,7 @@ import { requireOwner } from "@/lib/auth";
 import { examOf } from "@/lib/exams";
 import { fail, handle, nowIso, readJson } from "@/lib/http";
 import { isValidId, loadAttempt, totalUsed, updateAttempt, usedPerItem, type QuestionRecord } from "@/lib/store";
+import { MAX, checkLength, oneAtATime } from "@/lib/limits";
 import { tutor } from "@/lib/tutor";
 import type { AskRequest, AskResponse, OutlineItemNo } from "@/lib/types";
 
@@ -15,6 +16,9 @@ export const POST = handle(async (req: Request) => {
   const selection =
     body.selection && Number.isInteger(body.selection.start) && Number.isInteger(body.selection.end) ? body.selection : null;
   const draft = typeof body.draft === "string" ? body.draft : "";
+  checkLength(body.question, MAX.question, "질문");
+  checkLength(selectedText, MAX.selectedText, "선택한 부분");
+  checkLength(draft, MAX.draft, "글");
 
   // AI 호출 전에 먼저 상태 확인 (헛된 호출 방지)
   const pre = await loadAttempt(body.attemptId);
@@ -25,7 +29,9 @@ export const POST = handle(async (req: Request) => {
   const exam = await examOf(pre);
   if (totalUsed(pre) >= exam.acornSafetyCap) fail(429, "이번 시험에서 질문할 수 있는 횟수를 모두 썼어요.");
 
-  const result = await tutor({ exam, question: body.question.trim(), outlineItem: item, selectedText, draft });
+  const result = await oneAtATime(body.attemptId, () =>
+    tutor({ exam, question: body.question.trim(), outlineItem: item, selectedText, draft }),
+  );
 
   const res = await updateAttempt<AskResponse>(body.attemptId, (rec) => {
     if (!rec || !rec.acornPlan) fail(409, "응시 기록이 바뀌었어요. 다시 시도해 주세요.");

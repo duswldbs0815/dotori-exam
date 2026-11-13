@@ -59,3 +59,39 @@ export async function dbList<T>(table: string, filters: Record<string, string> =
     if (rows.length < PAGE) return out;
   }
 }
+
+/** 동시 저장 막기용: 데이터와 함께 마지막 저장 시각(updated_at)을 읽음 */
+export async function dbGetVersioned<T>(table: string, id: string): Promise<{ data: T; version: string } | null> {
+  const res = await rest(`${table}?id=eq.${encodeURIComponent(id)}&select=data,updated_at`);
+  const rows = (await res.json()) as { data: T; updated_at: string }[];
+  return rows[0] ? { data: rows[0].data, version: rows[0].updated_at } : null;
+}
+
+/**
+ * 읽은 뒤 그사이 아무도 안 고쳤을 때만 저장 (서버가 여러 대일 때 덮어쓰기 방지).
+ * prevVersion이 null이면 새 줄 추가. 성공이면 true, 다른 요청이 먼저 고쳤으면 false
+ */
+export async function dbSaveIfUnchanged<T>(
+  table: string,
+  id: string,
+  data: T,
+  prevVersion: string | null,
+  extra: Record<string, unknown> = {},
+): Promise<boolean> {
+  const body = JSON.stringify({ id, data, ...extra, updated_at: new Date().toISOString() });
+  if (prevVersion === null) {
+    try {
+      await rest(table, { method: "POST", headers: { Prefer: "return=minimal" }, body });
+      return true;
+    } catch (e) {
+      if (/HTTP 409/.test((e as Error).message)) return false; // 같은 id가 먼저 생김
+      throw e;
+    }
+  }
+  const res = await rest(`${table}?id=eq.${encodeURIComponent(id)}&updated_at=eq.${encodeURIComponent(prevVersion)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=representation" },
+    body,
+  });
+  return ((await res.json()) as unknown[]).length === 1;
+}

@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed:demo": "node scripts/seed-demo.mjs",
+    "seed:demo": "node --env-file-if-exists=.env.local scripts/seed-demo.mjs",
     "seed:school": "node scripts/seed-school.mjs",
     "push:supabase": "node scripts/push-to-supabase.mjs",
     "deploy": "bash scripts/deploy.sh",

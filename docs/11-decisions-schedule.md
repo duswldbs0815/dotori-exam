@@ -103,4 +103,4 @@
 |---|---|---|
 | C1 | 원본 PDF 경로 | 요청된 `docs/source/도토리시험지_구현계획.pdf`가 저장소에 없었음. `~/Downloads/도토리시험지_팀공유.pdf`(5쪽, 제목 "도토리 시험지 — 해커톤 구현 계획")를 같은 문서로 보고 복사함. **최종본이 맞는지 확인 필요** |
 | C2 | 손그림 위치 | 요청서에는 "3쪽 손그림"이었으나 실제로는 PDF **2쪽**에 있음 |
-| C4 | `supabase/schema.sql` | 확장용 초안으로 남아 있지만 이전 기획 기준(`question_budget` 8, `answer_key`, `grades`, 질문 방식 값 "대신 해 줘 / 확인해 줘 …")이라 지금 구조(`AttemptRecord`)와 다름. Supabase로 옮길 때 다시 맞춰야 함 |
+| C4 | `supabase/schema.sql` | 확장용 초안으로 남아 있지만 이전 기획 기준(`question_budget` 8, `answer_key`, `grades`, 질문 방식 값 "대신 해 줘 / 확인해 줘 …")이라 지금 구조(`AttemptRecord`)와 다름. Supabase로 옮길 때 다시 맞춰야 함. 🔄 11/14: 배포용은 `supabase/schema.sql`(응시 1건 = 한 줄, `dotori_attempts`)로 해결. 예전 초안은 `schema-draft-v0.sql`로 옮김 |

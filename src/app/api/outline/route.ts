@@ -1,5 +1,6 @@
 import { requireOwner } from "@/lib/auth";
 import { EXAM_CONFIG } from "@/lib/exam-config";
+import { MAX, checkLength } from "@/lib/limits";
 import { fail, handle, readJson } from "@/lib/http";
 import { isValidId, updateAttempt } from "@/lib/store";
 import type { OkResponse, Outline, OutlineRequest, PerItem } from "@/lib/types";
@@ -9,6 +10,7 @@ export const POST = handle(async (req: Request) => {
   if (!isValidId(body.attemptId)) fail(400, "attemptId가 올바르지 않아요.");
   if (!Array.isArray(body.outline) || body.outline.length !== 4 || !body.outline.every((s) => typeof s === "string"))
     fail(400, "개요는 4항목 문자열이어야 해요.");
+  body.outline.forEach((s) => checkLength(s, MAX.outlineItem, "개요 항목"));
   const max = EXAM_CONFIG.acornPlanMaxPerItem;
   if (
     !Array.isArray(body.acornPlan) ||

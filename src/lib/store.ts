@@ -2,7 +2,7 @@
 // Supabase 환경 변수가 있으면 dotori_attempts 표에, 없으면 로컬 JSON 파일(data/attempts/)에 저장합니다.
 import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { dbGet, dbList, dbPut, hasDb } from "./db";
+import { dbGet, dbGetVersioned, dbList, dbPut, dbSaveIfUnchanged, hasDb } from "./db";
 import { DEFAULT_CLASS_ID, DEFAULT_EXAM_ID } from "./school";
 import type { Outline, OutlineItemNo, PerItem, QuestionType, ReportSentence, Reflection, Stage } from "./types";
 
@@ -75,10 +75,7 @@ export async function loadAttempt(id: string): Promise<AttemptRecord | null> {
 export async function saveAttempt(rec: AttemptRecord) {
   if (hasDb()) {
     if (!isValidId(rec.attemptId)) throw new Error("잘못된 ID");
-    await dbPut(TABLE, rec.attemptId, rec, {
-      class_id: rec.classId || DEFAULT_CLASS_ID,
-      exam_id: rec.examId || DEFAULT_EXAM_ID,
-    });
+    await dbPut(TABLE, rec.attemptId, rec, extraCols(rec));
     return;
   }
   await mkdir(DATA_DIR, { recursive: true });
@@ -88,20 +85,42 @@ export async function saveAttempt(rec: AttemptRecord) {
   await rename(tmp, file); // 쓰는 도중 끊겨도 파일이 깨지지 않게
 }
 
-// 같은 학생 기록을 동시에 고치지 않도록 학생별로 순서대로 처리
+/** 지금 어디에 저장하는지 (GET /api/health/storage) */
+export function storageKind(): "supabase" | "file" {
+  return hasDb() ? "supabase" : "file";
+}
+
+const extraCols = (rec: AttemptRecord) => ({
+  class_id: rec.classId || DEFAULT_CLASS_ID,
+  exam_id: rec.examId || DEFAULT_EXAM_ID,
+});
+
+// 같은 학생 기록을 동시에 고치지 않도록 학생별로 순서대로 처리 (한 서버 안).
+// 서버가 여러 대(배포)일 때는 Supabase의 updated_at 비교로 덮어쓰기를 막고 다시 시도합니다.
 const locks = new Map<string, Promise<unknown>>();
+const MAX_TRIES = 5;
 
 /** 기록을 읽어서 고친 뒤 저장. fn이 던진 에러는 그대로 전달되고 저장하지 않음 */
 export async function updateAttempt<T>(
   id: string,
   fn: (rec: AttemptRecord | null) => Promise<{ rec: AttemptRecord | null; result: T }> | { rec: AttemptRecord | null; result: T },
 ): Promise<T> {
+  if (!isValidId(id)) throw new Error("잘못된 ID");
   const prev = locks.get(id) ?? Promise.resolve();
   const run = prev.catch(() => {}).then(async () => {
-    const current = await loadAttempt(id);
-    const { rec, result } = await fn(current);
-    if (rec) await saveAttempt(rec);
-    return result;
+    if (!hasDb()) {
+      const { rec, result } = await fn(await loadAttempt(id));
+      if (rec) await saveAttempt(rec);
+      return result;
+    }
+    for (let i = 0; i < MAX_TRIES; i++) {
+      const row = await dbGetVersioned<AttemptRecord>(TABLE, id);
+      const { rec, result } = await fn(row?.data ?? null);
+      if (!rec) return result;
+      if (await dbSaveIfUnchanged(TABLE, rec.attemptId, rec, row?.version ?? null, extraCols(rec))) return result;
+      await new Promise((r) => setTimeout(r, 50 * (i + 1))); // 잠깐 쉬고 다시
+    }
+    throw new Error("다른 요청과 겹쳐서 저장하지 못했어요. 다시 시도해 주세요.");
   });
   locks.set(id, run);
   try {

@@ -1,6 +1,7 @@
 import { newStudentKey, setMeCookie, setStudentCookie } from "@/lib/auth";
 import { attemptIdFor, getExam } from "@/lib/exams";
 import { CLASS_IDS, toStudentExam } from "@/lib/school";
+import { MAX, checkLength } from "@/lib/limits";
 import { fail, handle, nowIso, readJson } from "@/lib/http";
 import { isValidId, updateAttempt } from "@/lib/store";
 import type { StartRequest, StartResponse } from "@/lib/types";
@@ -11,6 +12,7 @@ export const POST = handle(async (req: Request) => {
   if (!isValidId(body.studentId)) fail(400, "학번은 영문·숫자·-·_ 1~32자여야 해요.");
   if (typeof body.name !== "string" || !body.name.trim()) fail(400, "이름이 필요해요.");
   const name = body.name.trim();
+  checkLength(name, MAX.name, "이름");
   const exam = await getExam(body.examId);
   if (body.examId && exam.id !== body.examId) fail(404, "수행평가를 찾지 못했어요.");
   const classId = typeof body.classId === "string" && CLASS_IDS.includes(body.classId) ? body.classId : undefined;

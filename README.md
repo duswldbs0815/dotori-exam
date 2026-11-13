@@ -30,11 +30,26 @@ npm run dev
 - AI 호출: `src/lib/llm.ts` (BAZE API Gateway, OpenAI 호환 `/chat/completions`). `.env.local`에 `LLM_API_URL=https://api.baze.co/v1/gateway`, `LLM_API_KEY`(BAZE 대시보드 > API Gateway), `LLM_MODEL`(예: `claude-sonnet-5-5`), `LLM_MODEL_FAST`(예: `claude-haiku-5-5`). 연결 확인은 `GET /api/health/llm`. 키가 없으면 수행평가 제안은 과목별 예시로 대신함
 - 공용 타입: `src/lib/types.ts`
 - 시험 설정 (도토리 안전 상한 등): `src/lib/exam-config.ts`
-- 저장: `SUPABASE_URL`과 `SUPABASE_SERVICE_ROLE_KEY`가 있으면 Supabase(`dotori_attempts`, `dotori_exams` 표, `src/lib/db.ts`), 없으면 로컬 JSON 파일(`data/attempts/`, `data/exams/`, git 제외). 표 만들기는 `supabase/schema.sql`
+- 저장: `SUPABASE_URL`과 `SUPABASE_SERVICE_ROLE_KEY`가 있으면 Supabase(`dotori_attempts`, `dotori_exams` 표, `src/lib/db.ts`), 없으면 로컬 JSON 파일(`data/attempts/`, `data/exams/`, git 제외). 표 만들기는 `supabase/schema.sql`. 어디에 저장 중인지 확인: `GET /api/health/storage` → `"storage":"supabase"`
 - 가상 학교 데이터: `npm run seed:school` → 12개 반 가상 학생 응시 기록 (`src/data/school.json`, `scripts/demo-data/school-content.json`). Supabase로 올리기: `npm run push:supabase`
 - 가상 학생 글 변형: `npm run gen:variants -- <examId> <개수>` → 교사팀 S01~S03 장문 데이터를 본보기로 AI가 새 학생 글·질문을 만들어 `scripts/demo-data/generated-variants.json`에 저장. `seed:school`이 이 변형을 섞어 씀 (손으로 쓴 고정 문장 대신). ⚠️ LLM 크레딧을 많이 씀
 - 시연용 가상 학생 만들기: `npm run seed:demo` → `S01`~`S03` (교사팀이 만든 가상 데이터 `scripts/demo-data/teacher-demo-students.json`). A: 계획 3·허용 2 / B: 계획 4·허용 11 / C: 계획 5·허용 6·대신 써 달라는 요청 차단 2
 - AI 답변·차단·분류: `src/lib/tutor.ts` / 교사 리포트(전후 비교, 작성 경로, 반 집계): `src/lib/report.ts`
+
+## 배포 (Vercel + Supabase)
+
+Vercel 같은 서버리스에서는 파일 저장이 유지되지 않으므로 **Supabase가 꼭 필요합니다.**
+
+1. Supabase 프로젝트를 만들고 SQL Editor에서 `supabase/schema.sql` 실행 → `dotori_attempts`, `dotori_exams` 표
+2. Project Settings > API Keys에서 Project URL과 secret 키(`sb_secret_…`) 복사
+3. Vercel 환경 변수: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `LLM_API_URL`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_MODEL_FAST`, `TEACHER_CODE`
+4. 가상 데이터 넣기: 로컬 `.env.local`에도 Supabase 두 값을 넣고 `npm run seed:demo` (S01~S03), `npm run seed:school && npm run push:supabase` (학교 전체)
+5. 배포: `npm run deploy` (git 정보 없이 올림. git 연결 배포는 Hobby 요금제에서 커밋 작성자가 팀원이 아니면 BLOCKED로 멈춤)
+6. 확인: `https://<주소>/api/health/storage` → `{"ok":true,"storage":"supabase"}`
+7. 교사 자료 업로드는 Vercel 요청 크기 제한 때문에 모두 합쳐 4MB까지
+8. 현재 배포: https://dotori-exam.vercel.app (Vercel `cjwksis-projects/dotori-exam`, Supabase `dotori-exam` 프로젝트)
+
+주의: 교사 코드 잠금(5번 틀리면 5분)과 "질문 한 번에 하나"는 서버 메모리에 두므로, 서버가 여러 대로 나뉘는 배포 환경에서는 서버마다 따로 셉니다. 시연 규모에서는 문제없습니다.
 
 ## API
 
@@ -55,15 +70,6 @@ npm run dev
 | `GET /api/teacher/school` | 학교 전체 반·수행평가 진행 현황 | P1 |
 | `POST /api/teacher/exams/suggest` | 과제·자료(PDF/TXT/MD)를 읽고 AI 활용 기준 초안 제안 | P1 |
 | `POST /api/teacher/exams` | 수행평가 확정·배포 | P1 |
-
-## 배포 (Vercel + Supabase)
-
-1. Supabase 프로젝트를 만들고 SQL Editor에서 `supabase/schema.sql` 실행
-2. Vercel 환경 변수: `LLM_API_URL`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_MODEL_FAST`, `TEACHER_CODE`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
-3. 가상 데이터 넣기: 로컬 `.env.local`에 Supabase 값을 넣고 `npm run seed:school && npm run push:supabase`
-4. 배포: `npm run deploy` (git 정보 없이 올림. git 정보가 붙으면 Hobby 요금제에서 배포가 BLOCKED로 멈춤)
-5. 교사 자료 업로드는 Vercel 요청 크기 제한 때문에 모두 합쳐 4MB까지
-6. 현재 배포: https://dotori-exam.vercel.app (Vercel `cjwksis-projects/dotori-exam`, Supabase `dotori-exam` 프로젝트)
 
 ## 주의
 

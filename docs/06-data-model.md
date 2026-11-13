@@ -14,7 +14,9 @@
 | 위치 (로컬) | 위 환경 변수가 없으면 `data/attempts/<attemptId>.json`, `data/exams/<id>.json` (git에서 제외: `.gitignore`의 `/data/`) |
 | 단위 | 응시 1건당 1개. 🔄 `attemptId` = 학번 (기본 「진달래꽃」) 또는 `학번_시험ID` (다른 수행평가) |
 | 반·시험 | 🔄 `classId`("2-3"), `examId`("kor2") 저장. 없으면 2-3반·kor2로 봄 |
-| 동시 저장 | 학생마다 쓰기 대기열로 순서대로 저장 (서버 인스턴스 안에서) |
+| 동시 저장 | 한 서버 안에서는 학생마다 순서대로 저장. 🔄 서버가 여러 대면 Supabase `updated_at`을 비교해서, 그사이 다른 요청이 고쳤으면 다시 읽고 다시 저장 (최대 5번) |
+| 보안 | Supabase 표는 RLS를 켜고 정책을 두지 않음 → 서버의 service_role(sb_secret_) 키로만 읽고 씀 |
+| 상태 확인 | `GET /api/health/storage` → `{ storage: "supabase" \| "file", count }` |
 | 🔄 학생별 조회 | `listAttemptsByStudent(학번)` → `id = 학번` 또는 `학번_*` (마이페이지) |
 | 🔄 가상 데이터 출처 | 시드 기록에는 `source`(teacher / generated / content)가 붙음. 생성 변형은 `scripts/gen-variants.mjs` |
 | 예전 초안 | `supabase/schema-draft-v0.sql` (정규화 설계 초안, 쓰지 않음) |
