@@ -1,4 +1,6 @@
+import { after } from "next/server";
 import { fail, handle, nowIso, readJson } from "@/lib/http";
+import { judgeSentencePaths } from "@/lib/judge";
 import { isValidId, updateAttempt } from "@/lib/store";
 import type { Reflection, SubmitRequest, SubmitResponse } from "@/lib/types";
 
@@ -29,6 +31,9 @@ export const POST = handle(async (req: Request) => {
       result: at,
     };
   });
+
+  // 응답을 먼저 보내고, 문장별 작성 경로 AI 판정은 뒤에서 처리해 저장
+  after(() => judgeSentencePaths(body.attemptId));
 
   const res: SubmitResponse = { ok: true, submittedAt };
   return Response.json(res);

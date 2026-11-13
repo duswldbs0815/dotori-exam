@@ -2,7 +2,7 @@
 // 배포 시 Supabase로 바꾸려면 이 파일의 load/save/list만 갈아 끼우면 됩니다.
 import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { Outline, OutlineItemNo, PerItem, QuestionType, Reflection, Stage } from "./types";
+import type { Outline, OutlineItemNo, PerItem, QuestionType, ReportSentence, Reflection, Stage } from "./types";
 
 export type QuestionRecord = {
   acornNo: number | null;
@@ -33,6 +33,10 @@ export type AttemptRecord = {
   final: string | null;
   reflection: Reflection | null;
   submittedAt: string | null;
+  /** 제출 후 AI가 판정한 문장별 작성 경로 (없으면 리포트에서 1차 판정 사용) */
+  sentencePaths?: ReportSentence[] | null;
+  /** 위 판정을 어떤 글로 했는지 (글이 바뀌면 다시 판정) */
+  sentencePathsFor?: string | null;
 };
 
 const DATA_DIR = path.join(process.cwd(), "data", "attempts");

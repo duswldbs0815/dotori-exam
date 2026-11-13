@@ -52,30 +52,74 @@ export function similarity(a: string, b: string): number {
   return (2 * hit) / total;
 }
 
-/**
- * 제출한 글의 문장마다 작성 경로를 판정.
- * - 첫 질문 전부터 있던 문장: self (스스로 작성)
- * - k번째 질문 직후 구간에 처음 생긴 문장: AI 답과 70% 이상 비슷하면 ai, 아니면 revised (질문 후 수정)
- * 판정은 교사가 볼 단서일 뿐, 표절 판정이 아닙니다.
- */
-function sentencePaths(rec: AttemptRecord, final: string): ReportSentence[] {
-  const charged = rec.questions.filter((q) => q.charged);
-  const snapshots = charged.map((q) => q.before); // 각 질문 직전 글
-  const appearsIn = (sentence: string, text: string) => {
-    const n = norm(sentence);
-    return n.length > 0 && norm(text).includes(n);
-  };
+/** 질문 뒤 문장이 AI 답의 "새 내용"과 이 정도 이상 겹치면 답을 반영한 것으로 봄 (글자 2개 묶음 개수) */
+const NEW_CONTENT_OVERLAP = 3;
 
+const bigrams = (s: string) => {
+  const n = norm(s);
+  const set = new Set<string>();
+  for (let i = 0; i < n.length - 1; i++) set.add(n.slice(i, i + 2));
+  return set;
+};
+
+/** 판정이 필요한 문장 하나: 어느 질문 뒤에 생겼는지와 그 질문의 답 */
+export type PathCandidate = {
+  text: string;
+  /** null이면 첫 질문 전부터 있던 문장 (self 확정) */
+  question: { acornNo: number | null; question: string; answer: string; before: string } | null;
+  /** AI 답 문장과 거의 같음 (ai 확정) */
+  nearCopy: boolean;
+  /** 1차 판정: AI 답에서 처음 나온 내용과 겹침 */
+  overlapsNewContent: boolean;
+};
+
+/** 제출한 글을 문장으로 나누고, 각 문장이 처음 생긴 시점과 1차 판정 근거를 계산 */
+export function pathCandidates(rec: AttemptRecord, final: string): PathCandidate[] {
+  const charged = rec.questions.filter((q) => q.charged);
+  const snapshots = charged.map((q) => norm(q.before)); // 각 질문 직전 글
   return splitSentences(final).map((text) => {
+    const n = norm(text);
     // 이 문장이 처음 나타난 시점: 몇 번째 질문 직전 글에 이미 있었나
-    let firstIdx = snapshots.findIndex((snap) => appearsIn(text, snap));
+    let firstIdx = snapshots.findIndex((snap) => n.length > 0 && snap.includes(n));
     if (firstIdx === -1) firstIdx = snapshots.length; // 마지막 질문 이후(제출 직전)에 생김
-    if (firstIdx === 0) return { text, path: "self" as const };
+    if (firstIdx === 0) return { text, question: null, nearCopy: false, overlapsNewContent: false };
 
     const q = charged[firstIdx - 1]; // 이 문장이 생기기 직전 질문
     const best = Math.max(0, ...splitSentences(q.answer).map((a) => similarity(text, a)), similarity(text, q.answer));
-    return { text, path: best >= AI_SIMILARITY ? ("ai" as const) : ("revised" as const), acornNo: q.acornNo ?? undefined };
+    // AI 답에서 "처음 나온" 내용: 질문 직전 글에는 없던 글자 묶음만 셈 (원래 쓰던 말은 제외)
+    const known = bigrams(q.before);
+    const fresh = [...bigrams(q.answer)].filter((g) => !known.has(g));
+    const mine = bigrams(text);
+    const overlap = fresh.filter((g) => mine.has(g)).length;
+    return {
+      text,
+      question: { acornNo: q.acornNo, question: q.question, answer: q.answer, before: q.before },
+      nearCopy: best >= AI_SIMILARITY,
+      overlapsNewContent: overlap >= NEW_CONTENT_OVERLAP,
+    };
   });
+}
+
+/**
+ * 1차 판정 (빠름): 문장마다 작성 경로를 정함.
+ * - 첫 질문 전부터 있던 문장 → self
+ * - 질문 뒤에 생긴 문장: AI 답과 거의 같으면 ai, AI 답의 새 내용과 겹치면 revised, 아니면 self
+ * 판정은 교사가 볼 단서일 뿐, 표절 판정이 아닙니다.
+ */
+export function heuristicPaths(cands: PathCandidate[]): ReportSentence[] {
+  return cands.map((c) => {
+    if (!c.question) return { text: c.text, path: "self" };
+    const acornNo = c.question.acornNo ?? undefined;
+    if (c.nearCopy) return { text: c.text, path: "ai", acornNo };
+    if (c.overlapsNewContent) return { text: c.text, path: "revised", acornNo };
+    return { text: c.text, path: "self" };
+  });
+}
+
+/** 제출 때 AI가 판정해 저장한 결과가 있으면 그걸, 없으면 1차 판정을 씀 */
+function sentencePaths(rec: AttemptRecord, final: string): ReportSentence[] {
+  if (rec.sentencePaths && rec.sentencePathsFor === final) return rec.sentencePaths;
+  return heuristicPaths(pathCandidates(rec, final));
 }
 
 export function buildStudentReport(rec: AttemptRecord): StudentReportResponse {
