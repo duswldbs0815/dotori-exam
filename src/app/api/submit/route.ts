@@ -1,3 +1,4 @@
+import { requireOwner } from "@/lib/auth";
 import { after } from "next/server";
 import { fail, handle, nowIso, readJson } from "@/lib/http";
 import { judgeSentencePaths } from "@/lib/judge";
@@ -15,8 +16,9 @@ export const POST = handle(async (req: Request) => {
   )
     fail(400, "성찰지는 4문항 문자열이어야 해요.");
 
-  const submittedAt = await updateAttempt(body.attemptId, (rec) => {
+  const submittedAt = await updateAttempt(body.attemptId, async (rec) => {
     if (!rec) fail(404, "응시 기록이 없어요.");
+    await requireOwner(rec);
     if (rec.submittedAt) fail(409, "이미 제출한 시험이에요.");
     const at = nowIso();
     return {

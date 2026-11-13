@@ -1,3 +1,4 @@
+import { requireOwner } from "@/lib/auth";
 import { fail, handle } from "@/lib/http";
 import { isValidId, loadAttempt, usedPerItem } from "@/lib/store";
 import type { AttemptStateResponse } from "@/lib/types";
@@ -8,6 +9,7 @@ export const GET = handle(async (_req: Request, ctx: RouteContext<"/api/attempt/
   if (!isValidId(attemptId)) fail(400, "attemptId가 올바르지 않아요.");
   const rec = await loadAttempt(attemptId);
   if (!rec) fail(404, "응시 기록이 없어요.");
+  await requireOwner(rec);
 
   const res: AttemptStateResponse = {
     attemptId: rec.attemptId,

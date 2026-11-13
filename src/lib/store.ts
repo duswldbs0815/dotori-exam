@@ -24,6 +24,8 @@ export type AttemptRecord = {
   attemptId: string;
   student: { id: string; name: string };
   verified: boolean;
+  /** 학생 열쇠의 해시 (쿠키에 든 열쇠와 맞아야 조회·저장 가능) */
+  keyHash?: string | null;
   startedAt: string;
   outline: Outline | null;
   acornPlan: PerItem | null;

@@ -1,3 +1,4 @@
+import { requireOwner } from "@/lib/auth";
 import { EXAM_CONFIG } from "@/lib/exam-config";
 import { fail, handle, nowIso, readJson } from "@/lib/http";
 import { isValidId, loadAttempt, totalUsed, updateAttempt, usedPerItem, type QuestionRecord } from "@/lib/store";
@@ -18,6 +19,7 @@ export const POST = handle(async (req: Request) => {
   // AI 호출 전에 먼저 상태 확인 (헛된 호출 방지)
   const pre = await loadAttempt(body.attemptId);
   if (!pre) fail(404, "응시 기록이 없어요.");
+  await requireOwner(pre);
   if (pre.submittedAt) fail(409, "이미 제출한 시험이에요.");
   if (!pre.outline || !pre.acornPlan) fail(409, "개요와 도토리 계획을 먼저 작성해 주세요.");
   if (totalUsed(pre) >= EXAM_CONFIG.acornSafetyCap) fail(429, "이번 시험에서 질문할 수 있는 횟수를 모두 썼어요.");

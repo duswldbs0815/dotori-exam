@@ -24,6 +24,7 @@
 - 요청·응답은 JSON. 실패하면 HTTP 4xx/5xx와 `{ "error": "사람이 읽을 메시지" }`
 - 시험은 하나로 고정: 「진달래꽃」 비평문 쓰기 (`src/lib/exam-config.ts`)
 - `attemptId`는 학생 ID와 같음 (예: `S07`)
+- 🔄 학생 API(`outline`·`draft`·`ask`·`attempt`·`submit`)는 `exam/start`가 준 학생 열쇠 쿠키가 있어야 함. 없으면 403 (자세한 내용은 `API.md`)
 - **학생 화면 응답에는 분류(stage, type), 작성 경로, 전후 비교를 넣지 않는다.** 교사 리포트 API에서만 내려간다.
 
 ## `/api/ask` 처리 순서
