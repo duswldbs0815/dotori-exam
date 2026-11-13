@@ -1,11 +1,12 @@
 // 서버 전용: 교사 리포트 만들기 (전후 비교, 작성 경로 판정, 반 전체 집계)
 import DiffMatchPatch from "diff-match-patch";
-import { EXAM_CONFIG } from "./exam-config";
+import { DEFAULT_CLASS_ID, toStudentExam } from "./school";
 import { totalUsed, usedPerItem, type AttemptRecord } from "./store";
 import {
   QUESTION_TYPES,
   STAGES,
   type ClassReportResponse,
+  type ExamDef,
   type DiffPart,
   type PerItem,
   type ReportQuestion,
@@ -122,7 +123,7 @@ function sentencePaths(rec: AttemptRecord, final: string): ReportSentence[] {
   return heuristicPaths(pathCandidates(rec, final));
 }
 
-export function buildStudentReport(rec: AttemptRecord): StudentReportResponse {
+export function buildStudentReport(rec: AttemptRecord, examDef: ExamDef): StudentReportResponse {
   const final = rec.final ?? rec.draft;
   const questions: ReportQuestion[] = rec.questions.map((q, i) => {
     const after = i + 1 < rec.questions.length ? rec.questions[i + 1].before : final;
@@ -146,7 +147,9 @@ export function buildStudentReport(rec: AttemptRecord): StudentReportResponse {
   const used = usedPerItem(rec);
   return {
     student: rec.student,
-    exam: EXAM_CONFIG,
+    classId: rec.classId || DEFAULT_CLASS_ID,
+    examId: examDef.id,
+    exam: { ...toStudentExam(examDef), itemGuides: examDef.itemGuides },
     outline: rec.outline,
     final,
     reflection: rec.reflection,
@@ -163,7 +166,7 @@ export function buildStudentReport(rec: AttemptRecord): StudentReportResponse {
   };
 }
 
-export function buildClassReport(recs: AttemptRecord[]): ClassReportResponse {
+export function buildClassReport(recs: AttemptRecord[], examDef?: ExamDef): ClassReportResponse {
   const counts = STAGES.map(() => QUESTION_TYPES.map(() => 0));
   const planned: PerItem = [0, 0, 0, 0];
   const used: PerItem = [0, 0, 0, 0];
@@ -184,7 +187,9 @@ export function buildClassReport(recs: AttemptRecord[]): ClassReportResponse {
   }
 
   return {
+    exam: examDef ? toStudentExam(examDef) : undefined,
     students: recs.map((r) => ({
+      attemptId: r.attemptId,
       studentId: r.student.id,
       name: r.student.name,
       totalPlanned: r.acornPlan ? r.acornPlan.reduce((a, b) => a + b, 0) : 0,

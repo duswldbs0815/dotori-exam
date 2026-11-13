@@ -1,5 +1,5 @@
-import { StartScreen } from "@/components/student/StartScreen";
+import { Landing } from "@/components/landing/Landing";
 
 export default function Home() {
-  return <StartScreen />;
+  return <Landing />;
 }

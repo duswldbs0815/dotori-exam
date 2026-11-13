@@ -1,10 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { api, ApiError, hhmm, SHORT_ITEMS } from "@/lib/api-client";
+import { api, ApiError, hhmm, shortLabels } from "@/lib/api-client";
 import type { ExamInfo, OutlineItemNo, PerItem, StudentQuestion } from "@/lib/types";
 import { Acorn } from "../Acorn";
 import { Squirrel } from "../Squirrel";
+import { PassagePanel } from "./PassagePanel";
 import { btn, card, ErrorBox } from "../ui";
 import type { SaveState } from "./ExamApp";
 
@@ -103,7 +104,7 @@ export function WriteStep(props: {
       <div className="flex flex-wrap items-start gap-6">
         <section aria-label="글쓰기" className={`${card} flex min-w-0 flex-[999_1_560px] flex-col gap-[18px] px-10 py-8 max-sm:px-5`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h1 className="m-0 font-display text-[30px] font-normal">내 감상문</h1>
+            <h1 className="m-0 font-display text-[30px] font-normal">내 글</h1>
             <span className="text-[13px] text-muted">
               {draft.length}자 · {saveLabel}
             </span>
@@ -115,7 +116,7 @@ export function WriteStep(props: {
             막히는 부분을 드래그하면 오른쪽 질문 상자에 담겨요.
           </div>
           <label htmlFor="essay" className="sr-only">
-            감상문 쓰기
+            {exam.title} 쓰기
           </label>
           <textarea
             id="essay"
@@ -125,7 +126,7 @@ export function WriteStep(props: {
             onSelect={captureSelection}
             onMouseUp={captureSelection}
             onKeyUp={captureSelection}
-            placeholder="「진달래꽃」에 대한 나의 비평을 써 보세요."
+            placeholder={exam.passage ? `「${exam.passage.title}」을(를) 읽고 내 생각을 써 보세요. 개요에 적은 순서대로 써도 좋아요.` : "과제에 맞게 내 생각을 써 보세요. 개요에 적은 순서대로 써도 좋아요."}
             className="min-h-[520px] w-full resize-y rounded-2xl border border-transparent bg-transparent p-0 text-[17px] leading-loose text-ink outline-none selection:bg-[#FFE3A3] focus:border-transparent"
           />
           <div className="flex flex-wrap justify-between gap-3 border-t border-dashed border-line pt-[18px]">
@@ -139,6 +140,7 @@ export function WriteStep(props: {
         </section>
 
         <aside className="flex min-w-0 flex-[1_1_400px] flex-col gap-4">
+          <PassagePanel exam={exam} />
           <section aria-label="질문 상자" className="flex flex-col gap-3.5 rounded-[26px] border-2 border-gold bg-white p-[22px]">
             <div className="flex items-center justify-between">
               <h2 className="m-0 font-display text-[22px] font-normal">AI에게 질문하기</h2>
@@ -147,7 +149,7 @@ export function WriteStep(props: {
             <div className="flex flex-col gap-1.5">
               <span id="item-label" className="text-[13px] font-bold text-sub">어느 항목에 대한 질문인가요?</span>
               <div role="radiogroup" aria-labelledby="item-label" className="flex flex-wrap gap-1.5">
-                {SHORT_ITEMS.map((label, i) => {
+                {shortLabels(exam).map((label, i) => {
                   const on = item === i + 1;
                   return (
                     <button
@@ -268,7 +270,7 @@ export function WriteStep(props: {
                     >
                       <span className={`flex-none ${qq.blocked ? "font-bold" : "font-display text-brown"}`}>{qq.blocked ? "차단" : `#${qq.acornNo}`}</span>
                       <span className="min-w-0">
-                        {SHORT_ITEMS[qq.outlineItem - 1]} · {qq.question}
+                        {shortLabels(exam)[qq.outlineItem - 1]} · {qq.question}
                         {qq.blocked && " · 도토리 안 씀"}
                       </span>
                     </button>

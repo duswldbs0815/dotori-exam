@@ -1,7 +1,9 @@
-// 서버 전용: 응시 기록 저장소 (시연용 JSON 파일).
-// 배포 시 Supabase로 바꾸려면 이 파일의 load/save/list만 갈아 끼우면 됩니다.
+// 서버 전용: 응시 기록 저장소.
+// Supabase 환경 변수가 있으면 dotori_attempts 표에, 없으면 로컬 JSON 파일(data/attempts/)에 저장합니다.
 import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { dbGet, dbList, dbPut, hasDb } from "./db";
+import { DEFAULT_CLASS_ID, DEFAULT_EXAM_ID } from "./school";
 import type { Outline, OutlineItemNo, PerItem, QuestionType, ReportSentence, Reflection, Stage } from "./types";
 
 export type QuestionRecord = {
@@ -23,6 +25,10 @@ export type QuestionRecord = {
 export type AttemptRecord = {
   attemptId: string;
   student: { id: string; name: string };
+  /** 어느 수행평가인지 (없으면 기본 「진달래꽃」) */
+  examId?: string;
+  /** 학년-반 ("2-3"). 없으면 기본 반 */
+  classId?: string;
   verified: boolean;
   /** 학생 열쇠의 해시 (쿠키에 든 열쇠와 맞아야 조회·저장 가능) */
   keyHash?: string | null;
@@ -53,7 +59,11 @@ function fileOf(id: string) {
   return path.join(DATA_DIR, `${id}.json`);
 }
 
+const TABLE = "dotori_attempts";
+
 export async function loadAttempt(id: string): Promise<AttemptRecord | null> {
+  if (!isValidId(id)) throw new Error("잘못된 ID");
+  if (hasDb()) return dbGet<AttemptRecord>(TABLE, id);
   try {
     return JSON.parse(await readFile(fileOf(id), "utf8")) as AttemptRecord;
   } catch (e) {
@@ -62,7 +72,15 @@ export async function loadAttempt(id: string): Promise<AttemptRecord | null> {
   }
 }
 
-async function saveAttempt(rec: AttemptRecord) {
+export async function saveAttempt(rec: AttemptRecord) {
+  if (hasDb()) {
+    if (!isValidId(rec.attemptId)) throw new Error("잘못된 ID");
+    await dbPut(TABLE, rec.attemptId, rec, {
+      class_id: rec.classId || DEFAULT_CLASS_ID,
+      exam_id: rec.examId || DEFAULT_EXAM_ID,
+    });
+    return;
+  }
   await mkdir(DATA_DIR, { recursive: true });
   const file = fileOf(rec.attemptId);
   const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
@@ -93,7 +111,17 @@ export async function updateAttempt<T>(
   }
 }
 
-export async function listAttempts(): Promise<AttemptRecord[]> {
+/** filter를 주면 그 반·시험 기록만 (DB에서는 해당 줄만 읽음) */
+export async function listAttempts(filter: { classId?: string; examId?: string } = {}): Promise<AttemptRecord[]> {
+  const keep = (r: AttemptRecord) =>
+    (!filter.classId || (r.classId || DEFAULT_CLASS_ID) === filter.classId) &&
+    (!filter.examId || (r.examId || DEFAULT_EXAM_ID) === filter.examId);
+  if (hasDb()) {
+    const f: Record<string, string> = {};
+    if (filter.classId) f.class_id = filter.classId;
+    if (filter.examId) f.exam_id = filter.examId;
+    return (await dbList<AttemptRecord>(TABLE, f)).filter(keep);
+  }
   let names: string[] = [];
   try {
     names = await readdir(DATA_DIR);
@@ -103,7 +131,18 @@ export async function listAttempts(): Promise<AttemptRecord[]> {
   }
   const ids = names.filter((n) => n.endsWith(".json")).map((n) => n.slice(0, -5));
   const recs = await Promise.all(ids.map((id) => loadAttempt(id)));
-  return recs.filter((r): r is AttemptRecord => r !== null).sort((a, b) => a.attemptId.localeCompare(b.attemptId));
+  return recs.filter((r): r is AttemptRecord => r !== null && keep(r)).sort((a, b) => a.attemptId.localeCompare(b.attemptId));
+}
+
+/** 한 학생(학번)의 모든 응시 기록. attemptId는 학번 또는 학번_시험ID */
+export async function listAttemptsByStudent(studentId: string): Promise<AttemptRecord[]> {
+  if (!isValidId(studentId)) return [];
+  const mine = (r: AttemptRecord) => r.student.id === studentId;
+  if (hasDb()) {
+    const rows = await dbList<AttemptRecord>(TABLE, {}, `or=(id.eq.${studentId},id.like.${studentId}_*)`);
+    return rows.filter(mine);
+  }
+  return (await listAttempts()).filter(mine);
 }
 
 /** 개요 항목별 사용한 도토리 수 (차감된 질문만) */

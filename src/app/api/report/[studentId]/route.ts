@@ -2,6 +2,7 @@ import { after } from "next/server";
 import { requireTeacher } from "@/lib/auth";
 import { fail, handle } from "@/lib/http";
 import { judgeSentencePaths } from "@/lib/judge";
+import { examOf } from "@/lib/exams";
 import { buildStudentReport } from "@/lib/report";
 import { isValidId, loadAttempt } from "@/lib/store";
 
@@ -17,5 +18,5 @@ export const GET = handle(async (_req: Request, ctx: RouteContext<"/api/report/[
   if (rec.final && !(rec.sentencePaths && rec.sentencePathsFor === rec.final)) {
     after(() => judgeSentencePaths(studentId));
   }
-  return Response.json(buildStudentReport(rec));
+  return Response.json(buildStudentReport(rec, await examOf(rec)));
 });

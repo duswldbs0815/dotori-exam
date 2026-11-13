@@ -48,3 +48,6 @@ next-env.d.ts
 
 # local exam records (JSON storage)
 /data/
+
+# editor
+.idea/

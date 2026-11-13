@@ -23,12 +23,77 @@ export type ExamInfo = {
   acornPlanMaxPerItem: number;
   /** 장난 방지용 안전장치 (학생에게 안 보임) */
   acornSafetyCap: number;
+  /** 아래는 교사가 만든 수행평가에서 채워짐 (기본 「진달래꽃」에도 채워 둠) */
+  id?: string;
+  subject?: string;
+  grade?: number;
+  /** 과제 설명 (AI 지시문에 들어감) */
+  task?: string;
+  /** 개요 항목 짧은 이름 (칩·그래프용) */
+  shortItems?: readonly string[];
+  /** 항목별 AI가 도와도 되는 범위와 권장 도토리 (교사용 기준. 학생 화면에는 권장 수만 안내) */
+  itemGuides?: readonly ItemGuide[];
+  /** 학생에게 보여 줄 지문·자료 (예: 「진달래꽃」 전문, 실험 안내). 없으면 과제 설명만 보여 줌 */
+  passage?: Passage;
+};
+
+/** 시험지 옆에 펼쳐 보는 지문·자료 */
+export type Passage = { title: string; author?: string; body: string; source?: string };
+
+/** 개요 항목 하나에 대한 AI 활용 기준 */
+export type ItemGuide = { help: string; avoid: string; acorns: number };
+
+/** 교사가 만든(또는 기본 제공) 수행평가 */
+export type ExamDef = ExamInfo & {
+  id: string;
+  subject: string;
+  grade: number;
+  task: string;
+  unit: string;
+  shortItems: string[];
+  itemGuides: ItemGuide[];
+  /** 배포한 반 ("2-3" 형식) */
+  classIds: string[];
+  /** 교사가 올린 자료 (이름과 글자 수만 저장) */
+  materials: { name: string; chars: number }[];
+  /** AI가 이 기준을 제안한 이유 */
+  rationale: string;
+  createdAt: string;
+  builtIn?: boolean;
+};
+
+// POST /api/teacher/exams/suggest (multipart: subject, grade, task, unit, notes, files)
+export type ExamSuggestion = {
+  title: string;
+  outlineItems: string[];
+  shortItems: string[];
+  itemGuides: ItemGuide[];
+  reflectionQuestions: string[];
+  rationale: string;
+  blockedExamples: string[];
+  materials: { name: string; chars: number }[];
+  /** ai: LLM이 만듦 / preset: AI 연결이 없어 과목별 예시를 보여 줌 */
+  source: "ai" | "preset";
+};
+// POST /api/teacher/exams
+export type SaveExamRequest = Omit<ExamDef, "id" | "createdAt" | "builtIn" | "acornPlanMaxPerItem" | "acornSafetyCap">;
+export type SaveExamResponse = { exam: ExamDef };
+// GET /api/exams?classId=2-3 (학생 시작 화면)
+export type ClassExamsResponse = { exams: { id: string; title: string; subject: string; grade: number }[] };
+// GET /api/teacher/school (교사 홈)
+export type SchoolOverviewResponse = {
+  school: string;
+  exams: ExamDef[];
+  classes: {
+    classId: string;
+    exams: { examId: string; total: number; submitted: number; blocked: number; avgAcorns: number }[];
+  }[];
 };
 
 export type ApiError = { error: string };
 
 // POST /api/exam/start
-export type StartRequest = { studentId: string; name: string; verified: boolean };
+export type StartRequest = { studentId: string; name: string; verified: boolean; examId?: string; classId?: string };
 export type StartResponse = { attemptId: string; exam: ExamInfo };
 
 // POST /api/outline : 개요 4항목 + 항목별 도토리 계획
@@ -96,6 +161,9 @@ export type SentencePath = "self" | "revised" | "ai";
 export type ReportSentence = { text: string; path: SentencePath; acornNo?: number };
 export type StudentReportResponse = {
   student: { id: string; name: string };
+  /** 학년-반, 수행평가 ID (반 리포트로 돌아가는 링크용) */
+  classId?: string;
+  examId?: string;
   exam: ExamInfo;
   outline: Outline | null;
   final: string;
@@ -112,9 +180,11 @@ export type StudentReportResponse = {
 export type TeacherLoginRequest = { code: string };
 export type TeacherMeResponse = { teacher: boolean };
 
-// GET /api/report/class (교사용, P2)
+// GET /api/report/class?classId=&examId= (교사용)
 export type ClassReportResponse = {
+  exam?: ExamInfo;
   students: {
+    attemptId: string;
     studentId: string;
     name: string;
     totalPlanned: number;
@@ -126,3 +196,26 @@ export type ClassReportResponse = {
   acornsByOutlineItem: { planned: PerItem; used: PerItem };
   blockedTotal: number;
 };
+
+// ── 학생 마이페이지 ─────────────────────────────────────────
+// GET /api/me (학생 본인 쿠키 필요). 학생에게 보여도 되는 값만: 분류·작성 경로·전후 비교는 넣지 않음
+export type MyAttempt = {
+  attemptId: string;
+  examId: string;
+  classId: string;
+  title: string;
+  subject: string;
+  labels: string[];
+  startedAt: string;
+  submittedAt: string | null;
+  plan: PerItem | null;
+  used: PerItem;
+  questionCount: number;
+  blockedCount: number;
+  reflectionDone: number;
+  chars: number;
+  questions: { time: string; outlineItem: OutlineItemNo; question: string; answer: string; blocked: boolean }[];
+};
+export type MyPageResponse = { student: { id: string; name: string }; attempts: MyAttempt[] };
+// POST /api/me/login
+export type MeLoginRequest = { studentId: string; name: string };

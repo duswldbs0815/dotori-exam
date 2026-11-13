@@ -5,7 +5,7 @@
 - 주소는 모두 `/api/...` (Next.js API Route)
 - 요청·응답은 JSON
 - 실패하면 HTTP 4xx/5xx와 `{ "error": "사람이 읽을 메시지" }`
-- 시험은 하나로 고정: 「진달래꽃」 감상문 쓰기
+- 🔄 수행평가가 여러 개입니다. 기본은 「진달래꽃」 감상문(`kor2`)이고, 가상 학교 시나리오(`src/data/school.json`)와 교사가 만든 수행평가가 더해집니다. `exam/start`에 `examId`, `classId`를 주면 그 시험으로 시작합니다 (없으면 kor2, 2-3반).
 - **도토리 개수는 시험이 정하지 않습니다.** 학생이 ① 개요 단계에서 항목마다 "이 활동에 몇 개 쓸지" **목표치**를 스스로 정하고, ③ 성찰지에서 목표와 실제 사용을 비교합니다.
 - 목표치는 한도가 아닙니다. **넘겨도 그대로 계속 질문할 수 있고**, 추가 경고 창도 띄우지 않습니다. 화면에는 `사용 3 / 목표 2`처럼 숫자만 보여 주고, 넘긴 사실은 기록(`overPlan`)만 해서 성찰과 리포트에 씁니다.
 - AI 답변 길이는 제한하지 않습니다. 대신 써 달라는 요청만 차단합니다.
@@ -245,8 +245,8 @@
   - `ai`: AI 답과 70% 이상 같음 (AI 답변 활용)
   - 판정 방식: ① 1차(즉시): AI 답에서 처음 나온 내용과 겹치는지 글자 비교 ② 2차(제출 직후 뒤에서): AI가 문장마다 판정해 저장. 2차 결과가 저장되기 전(제출 직후 몇 초)에는 1차 결과가 내려갑니다.
 
-## GET /api/report/class (교사, P2)
-반 전체 집계입니다. 교사 로그인 필요.
+## GET /api/report/class (교사, 🔄 P1)
+반 전체 집계입니다. 교사 로그인 필요. 🔄 `?classId=2-3&examId=kor2`로 한 반·한 수행평가만 볼 수 있고, 그때 응답에 `exam`(항목 이름·권장 도토리)이 들어가며 `students[].attemptId`로 학생 리포트를 엽니다.
 
 응답
 ```json
@@ -264,3 +264,41 @@
 }
 ```
 - `counts[i][j]` = `stages[i]` 단계에서 `types[j]` 방식으로 한 질문 수
+
+---
+
+## 🔄 가상 학교·수행평가 만들기 (11/14 추가)
+
+타입은 `src/lib/types.ts`의 `ExamDef`, `ExamSuggestion`, `SaveExamRequest`, `ClassExamsResponse`, `SchoolOverviewResponse`.
+
+### GET /api/exams?classId=2-3
+학생 시작 화면용. 그 반에 열린 수행평가 목록 (`ClassExamsResponse`). 학생용이라 교사 전용 값(`avoid`, 올린 자료)은 빼고 내려갑니다.
+
+### GET /api/teacher/school (교사)
+학교 전체 현황 (`SchoolOverviewResponse`): 반마다 수행평가별 응시 수, 제출 수, 차단 요청 수, 평균 도토리.
+
+### POST /api/teacher/exams/suggest (교사)
+`multipart/form-data`: `subject`, `grade`, `task`(필수), `unit`, `notes`, `pasted`(붙여 넣은 자료), `files`(PDF·TXT·MD, 5개, 모두 합쳐 4MB까지).
+AI가 자료와 채점기준표를 읽고 개요 4항목, 항목별 `itemGuides`(`help` AI가 도와도 되는 일 / `avoid` 하지 않을 일 / `acorns` 권장 도토리), 성찰 질문, 제안 이유를 돌려줍니다 (`ExamSuggestion`). AI 연결이 없거나 실패하면 같은 과목 예시로 대신하고 `source: "preset"`.
+
+### POST /api/teacher/exams (교사)
+`SaveExamRequest`(제안을 교사가 고친 값 + `classIds`)를 저장하고 바로 배포. 응답 `{ exam: ExamDef }`, 새 ID는 `t` + 6자리.
+
+## 🔄 내 학습 기록 (학생 마이페이지, 11/14 추가)
+
+타입은 `src/lib/types.ts`의 `MyPageResponse`, `MyAttempt`, `MeLoginRequest`. 학생 로그인은 서명한 쿠키 `dotori_me`(학번·이름)로 기억합니다. `POST /api/exam/start`도 이 쿠키를 함께 심습니다.
+
+### POST /api/me/login
+`{ studentId, name }`. 그 학번·이름으로 된 응시 기록이 있어야 로그인됩니다 (없으면 404). 페이스페이는 화면만 있는 모의 확인.
+
+### GET /api/me
+로그인한 학생의 응시 목록 (`MyPageResponse`). **학생용 값만** 내려갑니다: 개요, 도토리 계획·사용, 질문·답, 차단 여부, 글자 수, 제출 여부. 교사용 메모·분류·작성 경로는 넣지 않습니다. 로그인 전이면 401.
+
+### POST /api/me/logout
+`dotori_me` 쿠키 삭제.
+
+성장 도토리와 다람쥐 꾸미기 아이템 계산은 화면 쪽 `src/lib/growth.ts` (계획 5, 질문 1개당 2(최대 10), 제출 30, 성찰 10, 계획에 가깝게 10, 차단 없음 5 → 레벨 0/30/60/100/150).
+
+## 🔄 지문 (passage)
+
+`ExamInfo.passage = { title, author?, body, source? }`. `exam/start` 응답의 `exam`에 들어가고 (`GET /api/exams` 목록에는 제목만), 학생 화면 개요·글쓰기 옆에 보입니다. AI 튜터 지시문에도 지문(최대 3000자)이 들어갑니다. `POST /api/teacher/exams`에 `passage`를 넣으면 저장됩니다.

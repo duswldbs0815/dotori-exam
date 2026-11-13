@@ -1,7 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { SCHOOL_NAME } from "@/lib/school";
+import { Loading } from "../ui";
 import { api, ApiError } from "@/lib/api-client";
 import { Brand, btn, card, ErrorBox, Pill } from "../ui";
 
@@ -9,13 +12,15 @@ export function TeacherShell({ children, loggedIn = true }: { children: React.Re
   const router = useRouter();
   const pathname = usePathname();
   return (
-    <div className="min-h-screen w-full bg-teacher-bg px-8 pt-6 pb-12 max-sm:px-4">
+    <div className="min-h-screen w-full bg-teacher-bg px-8 pt-6 pb-12 max-sm:px-4 print:bg-white print:p-0">
       <div className="mx-auto flex max-w-[1280px] flex-col gap-[22px]">
-        <header className="flex flex-wrap items-center justify-between gap-4">
-          <Brand badge="교사용" />
+        <header className="flex flex-wrap items-center justify-between gap-4 print:hidden">
+          <Link href="/teacher" className="no-underline">
+            <Brand badge="교사용" />
+          </Link>
           {loggedIn && (
             <div className="flex items-center gap-2">
-              <Pill>국어 · 교사</Pill>
+              <Pill>{SCHOOL_NAME} · 교사</Pill>
               <button
                 type="button"
                 onClick={async () => {
@@ -79,4 +84,18 @@ export function TeacherLogin({ failed, onDone }: { failed?: boolean; onDone: () 
       </form>
     </TeacherShell>
   );
+}
+
+/** 교사 로그인 확인 후 children을 그림 (로그인 전이면 교사 코드 입력) */
+export function TeacherGate({ children, failed }: { children: React.ReactNode; failed?: boolean }) {
+  const [auth, setAuth] = useState<"checking" | "in" | "out">("checking");
+  useEffect(() => {
+    api.teacherMe().then(
+      (m) => setAuth(m.teacher ? "in" : "out"),
+      () => setAuth("out"),
+    );
+  }, []);
+  if (auth === "checking") return <TeacherShell loggedIn={false}><Loading /></TeacherShell>;
+  if (auth === "out") return <TeacherLogin failed={failed} onDone={() => setAuth("in")} />;
+  return <>{children}</>;
 }

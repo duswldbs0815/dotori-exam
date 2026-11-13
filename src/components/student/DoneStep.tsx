@@ -26,9 +26,15 @@ export function DoneStep({ name, used, info }: { name: string; used: PerItem; in
           </div>
         ))}
       </div>
-      <Link href="/" className={btn.primary}>
-        처음으로
-      </Link>
+      <div className="flex flex-wrap justify-center gap-3">
+        <Link href="/me" className={btn.primary}>
+          내 학습 기록 보기
+        </Link>
+        <Link href="/" className={btn.secondary}>
+          홈으로
+        </Link>
+      </div>
+      <p className="m-0 text-[13px] text-muted">내 학습 기록에서 지금까지 모은 성장 도토리로 다람쥐를 꾸밀 수 있어요.</p>
     </main>
   );
 }

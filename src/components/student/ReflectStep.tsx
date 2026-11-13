@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { api, ApiError, SHORT_ITEMS } from "@/lib/api-client";
+import { api, ApiError, shortLabels } from "@/lib/api-client";
 import type { ExamInfo, PerItem, Reflection, StudentQuestion } from "@/lib/types";
 import { Squirrel } from "../Squirrel";
 import { btn, card, ErrorBox } from "../ui";
@@ -56,7 +56,7 @@ export function ReflectStep(props: {
               개요 항목별로 정한 목표와 실제로 쓴 도토리예요. 목표 {totalPlan}개 중 {totalUsed}개를 썼어요.
             </p>
           </div>
-          <PlanChart plan={plan} used={used} />
+          <PlanChart plan={plan} used={used} labels={shortLabels(props.exam)} />
         </div>
         <div className="flex flex-col gap-2.5 rounded-[22px] border border-line bg-white px-[22px] py-[18px]">
           <h2 className="m-0 font-display text-xl font-normal">내가 한 질문 다시 보기</h2>
@@ -71,7 +71,7 @@ export function ReflectStep(props: {
               <div key={i} className="flex gap-2.5 text-sm leading-normal">
                 <span className="flex-none font-display text-brown">#{q.acornNo}</span>
                 <span>
-                  <span className="text-muted">{SHORT_ITEMS[q.outlineItem - 1]} · </span>
+                  <span className="text-muted">{shortLabels(props.exam)[q.outlineItem - 1]} · </span>
                   {q.question}
                 </span>
               </div>
@@ -125,14 +125,14 @@ export function ReflectStep(props: {
 }
 
 /** 항목별 목표(테두리 막대) vs 실제 사용(채운 막대) */
-function PlanChart({ plan, used }: { plan: PerItem; used: PerItem }) {
+function PlanChart({ plan, used, labels }: { plan: PerItem; used: PerItem; labels: readonly string[] }) {
   const max = Math.max(3, ...plan, ...used);
   const H = 180;
   const top = 30;
   const base = top + H;
   const y = (n: number) => base - (n / max) * H;
   const ticks = Array.from(new Set([0, Math.round(max / 2), max]));
-  const summary = SHORT_ITEMS.map((l, i) => `${l} 목표 ${plan[i]} 사용 ${used[i]}`).join(", ");
+  const summary = labels.map((l, i) => `${l} 목표 ${plan[i]} 사용 ${used[i]}`).join(", ");
   return (
     <div className="flex flex-col gap-2">
       <svg viewBox="0 0 440 270" width="100%" role="img" aria-label={`항목별 도토리: ${summary}`}>
@@ -148,7 +148,7 @@ function PlanChart({ plan, used }: { plan: PerItem; used: PerItem }) {
             </text>
           ))}
         </g>
-        {SHORT_ITEMS.map((label, i) => {
+        {labels.map((label, i) => {
           const cx = 92 + i * 96;
           const p = plan[i];
           const u = used[i];

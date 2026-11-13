@@ -5,6 +5,7 @@ import { api, ApiError } from "@/lib/api-client";
 import type { ExamInfo, Outline, PerItem } from "@/lib/types";
 import { Acorn } from "../Acorn";
 import { Squirrel } from "../Squirrel";
+import { PassagePanel } from "./PassagePanel";
 import { btn, card, ErrorBox } from "../ui";
 
 /** ① 개요: 4항목 + 항목별 도토리 목표 (AI 없이) */
@@ -59,6 +60,11 @@ export function OutlineStep(props: {
               <label htmlFor={`o${i}`} className="flex flex-[0_0_180px] flex-col justify-center gap-1 rounded-[18px] bg-cream-2 px-4 py-3.5 max-sm:flex-[1_1_100%]">
                 <span className="font-display text-[22px] text-brown">{i + 1}</span>
                 <span className="text-[15px] font-bold">{label.replace("·", " · ")}</span>
+                {exam.itemGuides?.[i] && (
+                  <span className="text-xs leading-snug text-sub" title={exam.itemGuides[i].help}>
+                    선생님 권장 도토리 {exam.itemGuides[i].acorns}개
+                  </span>
+                )}
               </label>
               <textarea
                 id={`o${i}`}
@@ -123,10 +129,24 @@ export function OutlineStep(props: {
       </section>
 
       <aside className="flex min-w-0 flex-[1_1_280px] flex-col gap-4">
+        <PassagePanel exam={exam} />
         <div className="flex items-center gap-2.5 rounded-[22px] border border-line bg-white px-4 py-3.5">
           <Squirrel size={64} />
           <span className="font-display text-[17px] leading-snug text-brown-dark">먼저 내 생각을 적어 두면 질문이 훨씬 좋아져!</span>
         </div>
+        {exam.itemGuides && (
+          <div className="flex flex-col gap-2.5 rounded-[18px] border border-line bg-white px-[18px] py-4">
+            <span className="text-sm font-bold text-brown-dark">이 시험에서 AI가 도와줄 수 있는 일</span>
+            <ol className="m-0 flex list-none flex-col gap-2 p-0 text-[13px] leading-snug text-sub">
+              {exam.itemGuides.map((g, i) => (
+                <li key={i} className="flex gap-2">
+                  <span className="font-display text-brown">{i + 1}</span>
+                  <span>{g.help}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
         <div className="flex flex-col gap-1.5 rounded-[18px] bg-leaf-bg px-[18px] py-4">
           <span className="text-sm font-bold text-leaf">도토리 목표는 한도가 아니에요</span>
           <span className="text-sm leading-normal text-leaf-2">

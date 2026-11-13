@@ -3,7 +3,12 @@ import type {
   AskRequest,
   AskResponse,
   AttemptStateResponse,
+  ClassExamsResponse,
   ClassReportResponse,
+  ExamSuggestion,
+  SaveExamRequest,
+  SaveExamResponse,
+  SchoolOverviewResponse,
   DraftResponse,
   ExamInfo,
   OkResponse,
@@ -14,8 +19,7 @@ import type {
   StartResponse,
   StudentReportResponse,
   SubmitResponse,
-  TeacherMeResponse,
-} from "./types";
+  TeacherMeResponse, MeLoginRequest, MyPageResponse } from "./types";
 
 export class ApiError extends Error {
   constructor(
@@ -28,11 +32,12 @@ export class ApiError extends Error {
 
 async function call<T>(path: string, init?: { method?: string; body?: unknown }): Promise<T> {
   let res: Response;
+  const form = init?.body instanceof FormData;
   try {
     res = await fetch(path, {
       method: init?.method ?? (init?.body === undefined ? "GET" : "POST"),
-      headers: init?.body === undefined ? undefined : { "Content-Type": "application/json" },
-      body: init?.body === undefined ? undefined : JSON.stringify(init.body),
+      headers: init?.body === undefined || form ? undefined : { "Content-Type": "application/json" },
+      body: init?.body === undefined ? undefined : form ? (init.body as FormData) : JSON.stringify(init.body),
       cache: "no-store",
     });
   } catch {
@@ -61,7 +66,15 @@ export const api = {
   teacherMe: () => call<TeacherMeResponse>("/api/teacher/me"),
   teacherLogin: (code: string) => call<OkResponse>("/api/teacher/login", { body: { code } }),
   teacherLogout: () => call<OkResponse>("/api/teacher/logout", { method: "POST", body: {} }),
-  classReport: () => call<ClassReportResponse>("/api/report/class"),
+  classReport: (q?: { classId?: string; examId?: string }) =>
+    call<ClassReportResponse>(`/api/report/class?${new URLSearchParams(Object.entries(q ?? {}).filter(([, v]) => v) as [string, string][])}`),
+  me: () => call<MyPageResponse>("/api/me"),
+  meLogin: (studentId: string, name: string) => call<{ ok: true }>("/api/me/login", { body: { studentId, name } satisfies MeLoginRequest }),
+  meLogout: () => call<{ ok: true }>("/api/me/logout", { method: "POST" }),
+  classExams: (classId: string) => call<ClassExamsResponse>(`/api/exams?classId=${enc(classId)}`),
+  school: () => call<SchoolOverviewResponse>("/api/teacher/school"),
+  suggestExam: (form: FormData) => call<ExamSuggestion>("/api/teacher/exams/suggest", { body: form }),
+  saveExam: (body: SaveExamRequest) => call<SaveExamResponse>("/api/teacher/exams", { body }),
   studentReport: (studentId: string) => call<StudentReportResponse>(`/api/report/${enc(studentId)}`),
 };
 
@@ -74,8 +87,8 @@ export function hhmm(time: string | null | undefined): string {
   return d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
-/** 개요 항목 짧은 이름 (칩·그래프용) */
-export const SHORT_ITEMS = ["주제·배경", "문법·어휘", "해석·근거", "비평·고쳐쓰기"] as const;
+/** 개요 항목 짧은 이름 (칩·그래프용). 시험마다 다르므로 shortLabels(exam)를 쓰세요 */
+export { shortLabels } from "./school";
 
 /** 시작 화면에서 받은 이름·시험 설정을 이 탭에 보관 (시험 화면은 exam/start를 다시 부르지 않음: 다시 부르면 학생 열쇠가 바뀜) */
 export type StudentSession = { name: string; exam: ExamInfo };

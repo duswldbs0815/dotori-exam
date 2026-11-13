@@ -41,7 +41,7 @@ export async function judgeSentencePaths(attemptId: string): Promise<void> {
           { role: "system", content: JUDGE_SYSTEM },
           { role: "user", content: list },
         ],
-        { model: "fast", maxTokens: 600 },
+        { model: "fast", maxTokens: 2000 },
       );
       const valid: SentencePath[] = ["ai", "revised", "self"];
       paths = base.map((s) => ({ ...s }));

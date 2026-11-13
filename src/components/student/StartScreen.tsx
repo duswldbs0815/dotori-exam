@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, ApiError, rememberSession } from "@/lib/api-client";
+import { CLASS_IDS, classLabel, DEFAULT_CLASS_ID, SCHOOL_NAME } from "@/lib/school";
+import type { ClassExamsResponse } from "@/lib/types";
 import { Acorn } from "../Acorn";
 import { Squirrel } from "../Squirrel";
 import { Brand, btn, card, ErrorBox, Pill } from "../ui";
@@ -20,6 +23,26 @@ export function StartScreen() {
   const [agreed, setAgreed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [classId, setClassId] = useState(DEFAULT_CLASS_ID);
+  const [exams, setExams] = useState<ClassExamsResponse["exams"] | null>(null);
+  const [examId, setExamId] = useState<string | null>(null);
+
+  // 우리 반에 열린 수행평가 불러오기
+  useEffect(() => {
+    let alive = true;
+    api.classExams(classId).then(
+      (r) => {
+        if (!alive) return;
+        setExams(r.exams);
+        setExamId(r.exams[0]?.id ?? null);
+      },
+      () => alive && setExams([]),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [classId]);
+  const exam = exams?.find((e) => e.id === examId) ?? null;
 
   const idOk = ID_RE.test(studentId.trim());
   const nameOk = name.trim().length > 0;
@@ -30,7 +53,7 @@ export function StartScreen() {
     setError(null);
     try {
       const id = studentId.trim();
-      const res = await api.start({ studentId: id, name: name.trim(), verified: true });
+      const res = await api.start({ studentId: id, name: name.trim(), verified: true, examId: examId ?? undefined, classId });
       rememberSession(res.attemptId, { name: name.trim(), exam: res.exam });
       router.push(`/exam/${encodeURIComponent(res.attemptId)}`);
     } catch (e) {
@@ -41,8 +64,15 @@ export function StartScreen() {
 
   const header = (
     <header className="flex flex-wrap items-center justify-between gap-4">
-      <Brand />
-      {who && <Pill>{who}</Pill>}
+      <Link href="/" className="no-underline" aria-label="도토리 시험지 소개로">
+        <Brand />
+      </Link>
+      <div className="flex items-center gap-2">
+        {who && <Pill>{who}</Pill>}
+        <Link href="/me" className="rounded-full border border-line bg-white px-3.5 py-[7px] text-[13px] font-bold text-brown no-underline">
+          내 학습 기록
+        </Link>
+      </div>
     </header>
   );
 
@@ -76,13 +106,52 @@ export function StartScreen() {
   return (
     <Shell>
       {header}
-      <WhyBanner />
       <main className="flex flex-wrap items-stretch gap-7">
         <section className={`${card} flex min-w-0 flex-[999_1_560px] flex-col gap-6 p-10 max-sm:p-6`}>
           <div className="flex flex-col gap-2">
-            <span className="text-[15px] font-bold text-brown">오늘의 수행평가 · 국어</span>
-            <h1 className="m-0 font-display text-5xl font-normal leading-tight max-sm:text-4xl">김소월 「진달래꽃」 감상문 쓰기</h1>
+            <span className="text-[15px] font-bold text-brown">
+              {SCHOOL_NAME} · {classLabel(classId)} · 오늘의 수행평가{exam ? ` · ${exam.subject}` : ""}
+            </span>
+            <h1 className="m-0 font-display text-5xl font-normal leading-tight max-sm:text-4xl">
+              {exams === null ? "수행평가를 불러오는 중…" : exam ? exam.title : "이 반에 열린 수행평가가 없어요"}
+            </h1>
           </div>
+          <div className="flex flex-wrap gap-3">
+            <label className="flex min-w-0 flex-[0_1_200px] flex-col gap-1.5">
+              <span className="text-[13px] font-bold text-sub">우리 반</span>
+              <select
+                value={classId}
+                onChange={(e) => setClassId(e.target.value)}
+                className="min-h-12 rounded-2xl border border-line bg-paper px-4 text-[15px]"
+              >
+                {CLASS_IDS.map((c) => (
+                  <option key={c} value={c}>
+                    {classLabel(c)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {exams && exams.length > 1 && (
+            <div className="flex flex-col gap-2" role="radiogroup" aria-label="오늘 볼 수행평가">
+              <span className="text-[13px] font-bold text-sub">우리 반에 열린 수행평가 {exams.length}개 · 하나를 골라요</span>
+              <div className="grid grid-cols-2 gap-2.5 max-sm:grid-cols-1">
+                {exams.map((e) => (
+                  <button
+                    key={e.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={e.id === examId}
+                    onClick={() => setExamId(e.id)}
+                    className={`flex cursor-pointer flex-col items-start gap-1 rounded-2xl border-2 px-4 py-3 text-left transition ${e.id === examId ? "border-brown bg-cream-3" : "border-line bg-white hover:border-line-2"}`}
+                  >
+                    <span className="text-[12px] font-bold text-brown">{e.subject}</span>
+                    <span className="text-[15px] font-bold leading-snug text-ink">{e.title}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <ol className="m-0 grid list-none grid-cols-3 gap-3 p-0 max-sm:grid-cols-1">
             {[
               ["1 개요", "네 칸에 생각 먼저 적기"],
@@ -110,15 +179,22 @@ export function StartScreen() {
             className="flex flex-wrap gap-3"
             onSubmit={(e) => {
               e.preventDefault();
-              if (idOk && nameOk) setPhase("ready");
+              if (idOk && nameOk && exam) setPhase("ready");
             }}
           >
             <label className="flex min-w-0 flex-[1_1_180px] flex-col gap-1.5">
               <span className="text-[13px] font-bold text-sub">학번</span>
               <input
                 value={studentId}
-                onChange={(e) => setStudentId(e.target.value)}
-                placeholder="예: S07"
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setStudentId(v);
+                  // 학번 5자리(학년 1 + 반 2 + 번호 2)면 반을 자동으로 맞춤
+                  const m = v.trim().match(/^([1-3])(\d{2})\d{2}$/);
+                  const cls = m ? `${m[1]}-${Number(m[2])}` : null;
+                  if (cls && CLASS_IDS.includes(cls) && cls !== classId) setClassId(cls);
+                }}
+                placeholder="예: 20307 (2학년 3반 7번)"
                 autoComplete="off"
                 className="min-h-12 rounded-2xl border border-line bg-paper px-4 text-[15px]"
               />
@@ -149,7 +225,7 @@ export function StartScreen() {
                 </span>
                 <span className="text-sm text-sub">시험 전에 페이스페이로 응시자 본인을 확인해요.</span>
               </div>
-              <button type="submit" disabled={!idOk || !nameOk} className={`${btn.secondary} border-2 border-brown text-brown`}>
+              <button type="submit" disabled={!idOk || !nameOk || !exam} className={`${btn.secondary} border-2 border-brown text-brown`}>
                 본인 확인하기
               </button>
             </div>
@@ -181,46 +257,6 @@ export function StartScreen() {
         </aside>
       </main>
     </Shell>
-  );
-}
-
-/** 왜 만들었나: 현장 문제(근거 통계) + 핵심 아이디어. 접어 둘 수 있음 (docs/00-overview.md) */
-function WhyBanner() {
-  const [open, setOpen] = useState(true);
-  const facts: [string, string, string][] = [
-    ["289명", "교사 모두 AI 글과 학생 글 구분 실패", "Fleckenstein 외, 2024"],
-    ["94%", "AI가 쓴 답안이 걸리지 않음", "리딩대, 2024"],
-    ["26%", "정확도 낮아 OpenAI 탐지기 폐지", "OpenAI, 2023"],
-  ];
-  return (
-    <section aria-label="도토리 시험지를 만든 이유" className="flex flex-col gap-4 rounded-[28px] bg-ink px-8 py-6 text-white max-sm:px-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <span className="text-[13px] font-bold text-[#F6D7B3]">현장의 문제</span>
-          <p className="m-0 font-display text-[26px] leading-snug max-sm:text-[22px]">선생님은 AI가 쓴 글과 학생이 쓴 글을 구분할 수 없어요.</p>
-        </div>
-        <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="cursor-pointer rounded-full border border-white/30 bg-transparent px-3.5 py-1.5 text-[13px] text-white/80">
-          {open ? "접기" : "자세히"}
-        </button>
-      </div>
-      {open && (
-        <>
-          <ul className="m-0 grid list-none grid-cols-3 gap-3 p-0 max-md:grid-cols-1">
-            {facts.map(([n, t, src]) => (
-              <li key={src} className="flex flex-col gap-1 rounded-2xl bg-white/10 px-4 py-3">
-                <span className="font-display text-[30px] leading-none text-[#F6D7B3]">{n}</span>
-                <span className="text-sm">{t}</span>
-                <span className="text-[11px] text-white/60">{src}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="m-0 text-[15px] leading-relaxed text-white/90">
-            그래서 <b className="text-[#F6D7B3]">잡아내지 말고, 과정을 남기기로</b> 했어요. AI를 시험지 안에 열어 두고, 질문할 때마다 도토리 1개를 써요.
-            어디서 무엇을 물었는지와 질문 전후의 글이 남아, 선생님은 결과가 아니라 <b>생각의 과정</b>을 평가할 수 있어요.
-          </p>
-        </>
-      )}
-    </section>
   );
 }
 

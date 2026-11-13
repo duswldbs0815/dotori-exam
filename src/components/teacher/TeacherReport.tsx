@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, ApiError, hhmm, SHORT_ITEMS } from "@/lib/api-client";
+import { api, ApiError, hhmm, shortLabels } from "@/lib/api-client";
+import { classLabel, SCHOOL_NAME } from "@/lib/school";
 import type { DiffPart, ReportQuestion, SentencePath, StudentReportResponse } from "@/lib/types";
-import { card, ErrorBox, Loading } from "../ui";
+import { btn, card, ErrorBox, Loading } from "../ui";
 import { TeacherLogin, TeacherShell } from "./TeacherShell";
 
 const PATH_LABEL: Record<SentencePath, string> = { self: "스스로 작성", revised: "질문 후 수정", ai: "AI 답 활용" };
@@ -68,6 +69,7 @@ export function TeacherReport() {
   const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
 
   const [nonce, setNonce] = useState(0);
+  const [send, setSend] = useState(false);
   useEffect(() => {
     let alive = true;
     api.studentReport(studentId).then(
@@ -110,12 +112,15 @@ export function TeacherReport() {
   if (status === "error" || !data || !view)
     return (
       <TeacherShell>
-        <Link href="/teacher" className="text-sm text-brown">← 학생 목록</Link>
+        <Link href="/teacher" className="text-sm text-brown">← 학교 전체</Link>
         <ErrorBox>{error ?? "리포트를 불러오지 못했어요."}</ErrorBox>
       </TeacherShell>
     );
 
   const charged = data.questions.filter((q) => !q.blocked).length;
+  const SHORT_ITEMS = shortLabels(data.exam);
+  const backHref = data.classId ? `/teacher/class/${data.classId}?exam=${data.examId ?? ""}` : "/teacher";
+  const backLabel = data.classId ? `← ${classLabel(data.classId)} 학생 목록` : "← 학생 목록";
   const openQ = (qi: number) => {
     setOpen((o) => (o === qi ? null : qi));
     requestAnimationFrame(() => itemRefs.current[qi]?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
@@ -139,9 +144,23 @@ export function TeacherReport() {
 
   return (
     <TeacherShell>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link href="/teacher" className="text-sm text-brown">← 학생 목록</Link>
+      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
+        <Link href={backHref} className="text-sm text-brown">{backLabel}</Link>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => window.print()} className="min-h-10 cursor-pointer rounded-full border border-line-3 bg-white px-4 text-[13px] font-bold text-brown-dark">
+            PDF로 저장
+          </button>
+          <button type="button" onClick={() => setSend(true)} className="min-h-10 cursor-pointer rounded-full border-0 bg-ink px-4 text-[13px] font-bold text-white">
+            슈퍼스쿨로 보내기
+          </button>
+        </div>
       </div>
+      <div className="hidden print:block">
+        <p className="m-0 text-xs text-muted">
+          {SCHOOL_NAME} · {data.classId ? classLabel(data.classId) : ""} · {data.exam.subject ?? ""} 수행평가 「{data.exam.title}」 · 도토리 시험지 과정 리포트
+        </p>
+      </div>
+      {send && <SendDialog name={data.student.name} exam={data.exam.title} onClose={() => setSend(false)} />}
 
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-1">
@@ -227,7 +246,7 @@ export function TeacherReport() {
                       </span>
                     </div>
                   ) : (
-                    <QuestionItem q={q} open={open === qi} onToggle={() => openQ(qi)} />
+                    <QuestionItem q={q} open={open === qi} onToggle={() => openQ(qi)} labels={SHORT_ITEMS} />
                   )}
                 </li>
               ))}
@@ -295,7 +314,7 @@ export function TeacherReport() {
   );
 }
 
-function QuestionItem({ q, open, onToggle }: { q: ReportQuestion; open: boolean; onToggle: () => void }) {
+function QuestionItem({ q, open, onToggle, labels }: { q: ReportQuestion; open: boolean; onToggle: () => void; labels: readonly string[] }) {
   return (
     <div className={`rounded-2xl border ${open ? "border-nut bg-cream-3" : "border-line bg-white"}`}>
       <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full cursor-pointer items-start gap-2.5 border-0 bg-transparent px-3.5 py-3 text-left">
@@ -303,7 +322,7 @@ function QuestionItem({ q, open, onToggle }: { q: ReportQuestion; open: boolean;
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="text-sm font-bold leading-normal">{q.question}</span>
           <span className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
-            {hhmm(q.time)} · {SHORT_ITEMS[q.outlineItem - 1]}
+            {hhmm(q.time)} · {labels[q.outlineItem - 1]}
             {q.type && <span className="rounded-full bg-[#F3E6D3] px-2 py-0.5 text-sub">{q.type}</span>}
             {q.stage && <span className="rounded-full border border-line-3 px-2 py-0.5 text-sub">{q.stage}</span>}
           </span>
@@ -364,5 +383,84 @@ function DiffView({ parts }: { parts: DiffPart[] }) {
         );
       })}
     </p>
+  );
+}
+
+/** 슈퍼스쿨 전송 (해커톤 시연용 모의 전송: 실제로 보내지 않음) */
+function SendDialog({ name, exam, onClose }: { name: string; exam: string; onClose: () => void }) {
+  const [items, setItems] = useState({ report: true, summary: true, comment: false });
+  const [phase, setPhase] = useState<"pick" | "sending" | "done">("pick");
+  const opts: [keyof typeof items, string, string][] = [
+    ["report", "과정 리포트 (PDF)", "글, 질문 기록, 질문 전후 비교, 도토리 계획과 사용"],
+    ["summary", "평가 요약", "질문 수, 차단 수, 작성 경로 비율"],
+    ["comment", "교과 세특 메모 초안", "선생님이 직접 고친 뒤 생기부에 옮겨요"],
+  ];
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(58,42,28,.35)] p-6 print:hidden" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="send-title"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.key === "Escape" && onClose()}
+        className="flex w-[480px] max-w-full flex-col gap-4 rounded-[28px] bg-white p-7 shadow-[0_24px_60px_rgba(58,42,28,.25)]"
+      >
+        {phase === "done" ? (
+          <>
+            <h2 id="send-title" className="m-0 font-display text-[26px] font-normal">슈퍼스쿨에 보냈어요</h2>
+            <p className="m-0 text-sm leading-relaxed text-sub">
+              {name} 학생의 「{exam}」 기록이 슈퍼스쿨 › 평가 › 수행평가 기록에 올라갔어요.
+            </p>
+            <span className="rounded-xl bg-cream-3 px-3 py-2 text-xs text-muted">시연용 모의 전송이에요. 실제 연동은 슈퍼스쿨 API 연결 후 동작해요.</span>
+            <button type="button" autoFocus onClick={onClose} className={`${btn.primary} min-h-12`}>
+              확인
+            </button>
+          </>
+        ) : (
+          <>
+            <h2 id="send-title" className="m-0 font-display text-[26px] font-normal">슈퍼스쿨로 보내기</h2>
+            <p className="m-0 text-sm text-sub">
+              {name} · 「{exam}」
+            </p>
+            <div className="flex flex-col gap-2">
+              {opts.map(([k, t, d]) => (
+                <button
+                  key={k}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={items[k]}
+                  onClick={() => setItems((s) => ({ ...s, [k]: !s[k] }))}
+                  className={`flex cursor-pointer items-start gap-3 rounded-2xl border-2 px-4 py-3 text-left ${items[k] ? "border-brown bg-cream-3" : "border-line bg-white"}`}
+                >
+                  <span className={`mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-md border-2 border-brown text-xs font-bold text-white ${items[k] ? "bg-brown" : "bg-white"}`}>
+                    {items[k] ? "✓" : ""}
+                  </span>
+                  <span className="flex flex-col gap-0.5">
+                    <span className="text-sm font-bold">{t}</span>
+                    <span className="text-xs text-muted">{d}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2.5">
+              <button type="button" onClick={onClose} className={`${btn.secondary} min-h-12 flex-1`}>
+                취소
+              </button>
+              <button
+                type="button"
+                disabled={phase === "sending" || !Object.values(items).some(Boolean)}
+                onClick={() => {
+                  setPhase("sending");
+                  window.setTimeout(() => setPhase("done"), 1200);
+                }}
+                className={`${btn.primary} min-h-12 flex-1`}
+              >
+                {phase === "sending" ? "보내는 중…" : "보내기"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
   );
 }

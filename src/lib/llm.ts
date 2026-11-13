@@ -37,7 +37,7 @@ export async function callLLM(messages: ChatMessage[], opts: CallOptions = {}): 
     body: JSON.stringify({
       model: resolveModel(opts.model),
       messages,
-      max_tokens: opts.maxTokens ?? 800,
+      max_tokens: opts.maxTokens ?? 2000,
       ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
     }),
   });
@@ -49,7 +49,10 @@ export async function callLLM(messages: ChatMessage[], opts: CallOptions = {}): 
 
   const data = await res.json();
   const content: unknown = data?.choices?.[0]?.message?.content;
-  if (typeof content !== "string") throw new Error("LLM 응답에 텍스트가 없습니다");
+  // 생각(추론) 토큰도 max_tokens 안에서 쓰는 모델은 한도에 걸리면 빈 답이 옴 → 에러로 처리 (도토리 차감 안 됨)
+  if (typeof content !== "string" || !content.trim()) {
+    throw new Error(`LLM 응답에 텍스트가 없습니다 (finish_reason: ${data?.choices?.[0]?.finish_reason ?? "?"})`);
+  }
   return content;
 }
 
@@ -74,7 +77,15 @@ function parseJsonLoose<T>(text: string): T {
   } catch {
     const start = cleaned.indexOf("{");
     const end = cleaned.lastIndexOf("}");
-    if (start !== -1 && end > start) return JSON.parse(cleaned.slice(start, end + 1)) as T;
+    if (start !== -1 && end > start) {
+      const body = cleaned.slice(start, end + 1);
+      try {
+        return JSON.parse(body) as T;
+      } catch (e) {
+        const pos = Number(String(e).match(/position (\d+)/)?.[1] ?? 0);
+        throw new Error(`LLM 응답을 JSON으로 읽지 못했습니다 (${String(e)}) …${body.slice(Math.max(0, pos - 120), pos + 60)}…`);
+      }
+    }
     throw new Error(`LLM 응답을 JSON으로 읽지 못했습니다: ${text.slice(0, 200)}`);
   }
 }

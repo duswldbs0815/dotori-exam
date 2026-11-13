@@ -1,6 +1,6 @@
 # 06. 데이터 구조
 
-> 한 줄 요약: 학생 1명의 응시 기록을 JSON 파일 하나(`data/attempts/<학생ID>.json`)로 저장하며, 실제 구조의 기준은 `src/lib/store.ts`의 `AttemptRecord`입니다. PDF 6장 JSON은 변경 전 기록으로 남깁니다. (PDF 6장 + 팀 결정 반영)
+> 한 줄 요약: 학생 1명의 응시 기록을 한 덩어리(JSON)로 저장하며 (배포: Supabase `dotori_attempts` 한 줄 / 로컬: `data/attempts/<attemptId>.json`), 실제 구조의 기준은 `src/lib/store.ts`의 `AttemptRecord`입니다. PDF 6장 JSON은 변경 전 기록으로 남깁니다. (PDF 6장 + 팀 결정 반영)
 >
 > 관련 문서: [05-api](./05-api.md) · [API.md](./API.md) · [03-teacher-report](./03-teacher-report.md) · [07-llm-prompts](./07-llm-prompts.md)
 
@@ -10,10 +10,14 @@
 
 | 항목 | 내용 |
 |---|---|
-| 위치 | `data/attempts/<학생ID>.json` (git에서 제외: `.gitignore`의 `/data/`) |
-| 단위 | 학생(응시) 1명당 파일 1개. `attemptId` = 학생 ID |
-| 동시 저장 | 학생마다 쓰기 대기열로 순서대로 저장 |
-| 교체 | 웹 배포 시 `store.ts`의 load/save/list만 바꾸면 Supabase로 교체 가능 (`supabase/schema.sql`은 확장용 초안) |
+| 위치 (배포) | 🔄 Supabase 표 `dotori_attempts`(id, class_id, exam_id, data jsonb), `dotori_exams`(id, data jsonb). `SUPABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`가 있으면 사용 (`src/lib/db.ts`, 표 정의 `supabase/schema.sql`, 서버만 접근하도록 RLS 켬) |
+| 위치 (로컬) | 위 환경 변수가 없으면 `data/attempts/<attemptId>.json`, `data/exams/<id>.json` (git에서 제외: `.gitignore`의 `/data/`) |
+| 단위 | 응시 1건당 1개. 🔄 `attemptId` = 학번 (기본 「진달래꽃」) 또는 `학번_시험ID` (다른 수행평가) |
+| 반·시험 | 🔄 `classId`("2-3"), `examId`("kor2") 저장. 없으면 2-3반·kor2로 봄 |
+| 동시 저장 | 학생마다 쓰기 대기열로 순서대로 저장 (서버 인스턴스 안에서) |
+| 🔄 학생별 조회 | `listAttemptsByStudent(학번)` → `id = 학번` 또는 `학번_*` (마이페이지) |
+| 🔄 가상 데이터 출처 | 시드 기록에는 `source`(teacher / generated / content)가 붙음. 생성 변형은 `scripts/gen-variants.mjs` |
+| 예전 초안 | `supabase/schema-draft-v0.sql` (정규화 설계 초안, 쓰지 않음) |
 
 ## AttemptRecord (응시 기록 전체)
 

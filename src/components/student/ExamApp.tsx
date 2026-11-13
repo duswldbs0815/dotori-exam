@@ -102,7 +102,7 @@ export function ExamApp() {
               ? "처음 화면에서 학번과 이름으로 다시 시작하면 쓰던 글을 이어서 쓸 수 있어요."
               : loadError.message}
           </p>
-          <Link href="/" className={btn.primary}>처음 화면으로</Link>
+          <Link href="/start" className={btn.primary}>처음 화면으로</Link>
         </div>
       </Shell>
     );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import type { Wear } from "@/lib/growth";
 
 type Hop = "idle" | "squash" | "jump" | "land";
 type Eat = "none" | "grab" | "chewA" | "chewB" | "gulp" | "yum";
@@ -22,9 +23,9 @@ const EAT: [Eat, number][] = [
 
 /**
  * 도토리를 안은 다람쥐 (와이어프레임 Squirrel).
- * 누르면 폴짝, `eats` 값이 늘어나면 도토리를 냠냠 먹는다.
+ * 누르면 폴짝, `eats` 값이 늘어나면 도토리를 냠냠 먹는다. `wear`로 꾸미기 아이템을 씌운다 (마이페이지).
  */
-export function Squirrel({ size = 88, eats = 0 }: { size?: number; eats?: number }) {
+export function Squirrel({ size = 88, eats = 0, wear }: { size?: number; eats?: number; wear?: Wear }) {
   const uid = useId().replace(/:/g, "");
   const [hop, setHop] = useState<Hop>("idle");
   const [eat, setEat] = useState<Eat>("none");
@@ -190,6 +191,37 @@ export function Squirrel({ size = 88, eats = 0 }: { size?: number; eats?: number
             <circle cx={64 + off} cy={83 + off} r="1.2" />
             <circle cx={52} cy={90 + off} r="1.4" />
           </g>
+          {/* 꾸미기 아이템 (몸과 같이 폴짝) */}
+          {wear?.face === "glasses" && (
+            <g fill="#FFFFFF" fillOpacity=".18" stroke="#3A2A1C" strokeWidth="2.2">
+              <circle cx="43" cy="63" r="8.5" />
+              <circle cx="69" cy="63" r="8.5" />
+              <path d="M51.5 62 Q56 58.5 60.5 62" fill="none" />
+              <path d="M34.5 61 L25 57 M77.5 61 L87 57" fill="none" strokeLinecap="round" />
+            </g>
+          )}
+          {wear?.ear === "ribbon" && (
+            <g transform="translate(86 24) rotate(18)">
+              <path d="M0 0 L-10 -7 Q-12 0 -10 7 Z" fill="#FF8FA3" stroke="#D9607A" strokeWidth="1.2" strokeLinejoin="round" />
+              <path d="M0 0 L10 -7 Q12 0 10 7 Z" fill="#FF8FA3" stroke="#D9607A" strokeWidth="1.2" strokeLinejoin="round" />
+              <circle r="3" fill="#E86A86" />
+            </g>
+          )}
+          {wear?.head === "cap" && (
+            <g>
+              <path d="M56 19 v-6" stroke="#5A3418" strokeWidth="3" strokeLinecap="round" />
+              <path d="M36 36 Q36 18 56 18 Q76 18 76 36 Q76 40 56 40 Q36 40 36 36 Z" fill={url("cap")} />
+              <path d="M40 30 Q56 25 72 30 M38.5 35 Q56 30 73.5 35" fill="none" stroke="#3E2410" strokeWidth="1.2" opacity=".5" />
+            </g>
+          )}
+          {wear?.head === "crown" && (
+            <g>
+              <path d="M38 37 L40 17 L49 27 L56 12 L63 27 L72 17 L74 37 Z" fill="#FFD36B" stroke="#C9962E" strokeWidth="1.6" strokeLinejoin="round" />
+              <circle cx="56" cy="30" r="2.6" fill="#FF8F8F" />
+              <circle cx="46" cy="32" r="1.8" fill="#7FB3E8" />
+              <circle cx="66" cy="32" r="1.8" fill="#7FB3E8" />
+            </g>
+          )}
           <g opacity={up || eat === "yum" ? 1 : 0}>
             <path d="M96 22 c-3-5-10-2-7 4 l7 6 l7-6 c3-6-4-9-7-4z" fill="#FF8F8F" />
             <path d="M18 30 l2 5 5 2 -5 2 -2 5 -2-5 -5-2 5-2z" fill="#FFD36B" />

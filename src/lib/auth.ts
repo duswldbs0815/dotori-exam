@@ -88,3 +88,41 @@ export async function requireOwner(rec: { attemptId: string; keyHash?: string | 
   if (!rec.keyHash || id !== rec.attemptId || !key || !same(hashKey(key), rec.keyHash))
     fail(403, "이 시험지를 열 권한이 없어요. 처음 화면에서 시험을 다시 시작해 주세요.");
 }
+
+// ── 학생 본인 (마이페이지) ──────────────────────────────────
+// 본인 확인(시험 시작 또는 마이페이지 로그인)을 한 학생의 학번·이름을 서명해서 쿠키에 둡니다.
+// 시연용 간이 방식이라 실제 도입 시에는 학교 계정 로그인으로 바꿉니다.
+
+export const ME_COOKIE = "dotori_me";
+const ME_MAX_AGE = 60 * 60 * 24 * 7; // 7일
+
+function meSign(payload: string): string {
+  return createHmac("sha256", teacherCode()).update(`dotori-me-v1:${payload}`).digest("hex");
+}
+
+export async function setMeCookie(studentId: string, name: string) {
+  const payload = `${studentId}|${encodeURIComponent(name)}`;
+  (await cookies()).set(ME_COOKIE, `${payload}.${meSign(payload)}`, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: ME_MAX_AGE,
+  });
+}
+
+export async function clearMeCookie() {
+  (await cookies()).delete(ME_COOKIE);
+}
+
+/** 로그인한 학생 (없거나 위조면 null) */
+export async function getMe(): Promise<{ studentId: string; name: string } | null> {
+  const v = (await cookies()).get(ME_COOKIE)?.value ?? "";
+  const dot = v.lastIndexOf(".");
+  if (dot <= 0) return null;
+  const payload = v.slice(0, dot);
+  if (!same(v.slice(dot + 1), meSign(payload))) return null;
+  const [studentId, name] = payload.split("|");
+  if (!studentId || !name) return null;
+  return { studentId, name: decodeURIComponent(name) };
+}

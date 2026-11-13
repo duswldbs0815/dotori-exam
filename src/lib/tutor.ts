@@ -1,6 +1,6 @@
 // 서버 전용: 시험지 안 AI의 답변·차단·분류
 import { callLLM, callLLMJson } from "./llm";
-import { EXAM_CONFIG } from "./exam-config";
+import type { ExamInfo } from "./types";
 import { QUESTION_TYPES, STAGES, type OutlineItemNo, type QuestionType, type Stage } from "./types";
 
 export const BLOCKED_MESSAGE = "이 시험에서는 글을 대신 써 줄 수 없어요. 어느 부분에서 막혔는지 알려 주세요.";
@@ -9,6 +9,8 @@ const BLOCK_TAG = "[BLOCKED]";
 const MAX_DRAFT_CHARS = 4000;
 
 type AskInput = {
+  /** 이 응시의 수행평가 (과목·과제·항목·항목별 AI 기준) */
+  exam: ExamInfo;
   question: string;
   outlineItem: OutlineItemNo;
   selectedText: string;
@@ -16,22 +18,31 @@ type AskInput = {
 };
 
 function context(input: AskInput) {
-  const item = EXAM_CONFIG.outlineItems[input.outlineItem - 1];
+  const item = input.exam.outlineItems[input.outlineItem - 1];
+  const guide = input.exam.itemGuides?.[input.outlineItem - 1];
   const draft = input.draft.length > MAX_DRAFT_CHARS ? `…${input.draft.slice(-MAX_DRAFT_CHARS)}` : input.draft;
   return [
     `개요 항목: ${input.outlineItem}. ${item}`,
+    guide ? `이 항목에서 AI가 도와도 되는 일: ${guide.help}\n이 항목에서 AI가 하지 않을 일: ${guide.avoid || "글을 대신 쓰기"}` : "",
     input.selectedText ? `학생이 선택한 부분:\n"""${input.selectedText}"""` : "학생이 선택한 부분: 없음",
+    input.exam.passage ? `시험지에 함께 주어진 지문·자료 「${input.exam.passage.title}」:\n"""${input.exam.passage.body.slice(0, 3000)}"""` : "",
     `학생의 현재 글:\n"""${draft || "(아직 비어 있음)"}"""`,
-  ].join("\n\n");
+  ].filter(Boolean).join("\n\n");
 }
 
-const ANSWER_SYSTEM = `너는 중학생의 「진달래꽃」(김소월) 감상문 수행평가 시험지 안에 있는 AI 도우미다.
+const ANSWER_SYSTEM_HEAD = (exam: ExamInfo) =>
+  exam.id && exam.id !== "kor2"
+    ? `너는 중학교 ${exam.grade ?? ""}학년 ${exam.subject ?? ""} 수행평가 「${exam.title}」 시험지 안에 있는 AI 도우미다.\n과제: ${exam.task ?? ""}`
+    : "너는 중학생의 「진달래꽃」(김소월) 감상문 수행평가 시험지 안에 있는 AI 도우미다.";
+
+const ANSWER_RULES = `
 
 지켜야 할 것:
 - 학생이 글, 문단, 문장을 대신 써 달라고 하거나 고쳐 쓴 문장을 달라고 하면 답하지 말고, 첫 줄에 ${BLOCK_TAG} 만 쓴다.
 - 학생의 글을 대신 쓰거나, 그대로 옮겨 쓸 수 있는 완성된 문장·문단·예시 글을 주지 않는다.
 - 학생 글의 문장을 직접 고쳐 쓰지 않는다. 어디가 왜 아쉬운지 짚어 주고, 고치는 일은 학생에게 맡긴다.
-- 개념 설명, 시어의 뜻, 해석의 관점, 근거를 찾는 방향, 글의 약점 짚기, 되묻기는 해도 된다.
+- 개념 설명, 낱말의 뜻, 해석의 관점, 근거를 찾는 방향, 글의 약점 짚기, 되묻기는 해도 된다.
+- 개요 항목마다 교사가 정한 "AI가 하지 않을 일"이 주어지면 그것도 하지 않는다.
 - 중학생이 이해할 수 있는 쉬운 말로, 최대 세 문장으로 답한다.
 - 존댓말(해요체)로만 답한다.
 - 제목(#), 굵은 글씨(**), 표 같은 마크다운 기호 없이 평범한 문장으로 답한다.`;
@@ -40,10 +51,10 @@ const ANSWER_SYSTEM = `너는 중학생의 「진달래꽃」(김소월) 감상�
 async function answer(input: AskInput): Promise<string | null> {
   const text = await callLLM(
     [
-      { role: "system", content: ANSWER_SYSTEM },
+      { role: "system", content: `${ANSWER_SYSTEM_HEAD(input.exam)}\n\n${ANSWER_RULES}` },
       { role: "user", content: `${context(input)}\n\n학생의 질문:\n${input.question}` },
     ],
-    { model: "main", maxTokens: 400 },
+    { model: "main", maxTokens: 2000 },
   );
   if (text.trimStart().startsWith(BLOCK_TAG)) return null;
   return text.trim();
@@ -68,10 +79,10 @@ export async function classify(input: AskInput): Promise<Classification> {
         { role: "system", content: CLASSIFY_SYSTEM },
         {
           role: "user",
-          content: `개요 항목: ${input.outlineItem}. ${EXAM_CONFIG.outlineItems[input.outlineItem - 1]}\n선택한 부분: ${input.selectedText || "없음"}\n질문: ${input.question}`,
+          content: `개요 항목: ${input.outlineItem}. ${input.exam.outlineItems[input.outlineItem - 1]}\n선택한 부분: ${input.selectedText || "없음"}\n질문: ${input.question}`,
         },
       ],
-      { model: "fast", maxTokens: 200 },
+      { model: "fast", maxTokens: 1000 },
     );
     return {
       stage: (STAGES as readonly string[]).includes(out.stage ?? "") ? (out.stage as Stage) : null,

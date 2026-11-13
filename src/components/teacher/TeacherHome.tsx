@@ -2,214 +2,117 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-import { api, ApiError, SHORT_ITEMS } from "@/lib/api-client";
-import type { ClassReportResponse } from "@/lib/types";
-import { card, ErrorBox, Loading } from "../ui";
-import { TeacherLogin, TeacherShell } from "./TeacherShell";
+import { useEffect, useState } from "react";
+import { api, ApiError } from "@/lib/api-client";
+import { classLabel, GRADES } from "@/lib/school";
+import type { SchoolOverviewResponse } from "@/lib/types";
+import { Acorn } from "../Acorn";
+import { btn, card, ErrorBox, Loading } from "../ui";
+import { TeacherGate, TeacherShell } from "./TeacherShell";
 
-type Row = ClassReportResponse["students"][number];
-type Filter = "all" | "submitted" | "writing";
+const SUBJECT_COLOR: Record<string, string> = {
+  국어: "bg-[#FCE9D2] text-[#8A4B12]",
+  과학: "bg-[#DDEFE3] text-[#23633A]",
+  사회: "bg-[#E4EEFB] text-[#2F5E99]",
+  영어: "bg-[#F3E3F3] text-[#7A3B7A]",
+};
+const subjectClass = (s: string) => SUBJECT_COLOR[s] ?? "bg-cream-2 text-brown";
 
-/** 교사 첫 화면: 로그인 확인 → 반 전체 요약 → 학생 목록 */
 export function TeacherHome() {
   const search = useSearchParams();
-  const [auth, setAuth] = useState<"checking" | "in" | "out">("checking");
-  const [rows, setRows] = useState<Row[] | null>(null);
-  const [summary, setSummary] = useState<ClassReportResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<Filter>("all");
+  return (
+    <TeacherGate failed={search.get("login") === "failed"}>
+      <SchoolHome />
+    </TeacherGate>
+  );
+}
 
-  const load = useCallback(async () => {
-    setError(null);
-    try {
-      const r = await api.classReport();
-      setRows(r.students);
-      setSummary(r);
-      setAuth("in");
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 401) setAuth("out");
-      else setError(e instanceof ApiError ? e.message : "불러오지 못했어요.");
-    }
-  }, []);
+/** 교사 첫 화면: 학교 전체 → 학년 · 반별 수행평가 진행 상황 */
+function SchoolHome() {
+  const [data, setData] = useState<SchoolOverviewResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api
-      .teacherMe()
-      .then((m) => (m.teacher ? load() : setAuth("out")))
-      .catch(() => setAuth("out"));
-  }, [load]);
+    api.school().then(setData, (e) => setError(e instanceof ApiError ? e.message : "불러오지 못했어요."));
+  }, []);
 
-  if (auth === "checking" && !error) return <TeacherShell loggedIn={false}><Loading /></TeacherShell>;
-  if (auth === "out") return <TeacherLogin failed={search.get("login") === "failed"} onDone={() => void load()} />;
+  if (error) return <TeacherShell><ErrorBox>{error}</ErrorBox></TeacherShell>;
+  if (!data) return <TeacherShell><Loading /></TeacherShell>;
 
-  const list = rows ?? [];
-  const submitted = list.filter((r) => r.submitted).length;
-  const shown = list.filter((r) => filter === "all" || (filter === "submitted" ? r.submitted : !r.submitted));
-  const tabs: [Filter, string][] = [
-    ["all", `전체 ${list.length}`],
-    ["submitted", `제출 ${submitted}`],
-    ["writing", `작성 중 ${list.length - submitted}`],
+  const examById = new Map(data.exams.map((e) => [e.id, e]));
+  const all = data.classes.flatMap((c) => c.exams);
+  const total = all.reduce((a, e) => a + e.total, 0);
+  const submitted = all.reduce((a, e) => a + e.submitted, 0);
+  const blocked = all.reduce((a, e) => a + e.blocked, 0);
+  const stats: [string, string][] = [
+    [String(data.exams.length), "열린 수행평가"],
+    [String(total), "응시한 학생 기록"],
+    [total ? `${Math.round((submitted / total) * 100)}%` : "–", "제출률"],
+    [String(blocked), "대신 써 달라는 요청 (차단)"],
   ];
 
   return (
     <TeacherShell>
-      <div className="flex flex-col gap-1">
-        <span className="text-sm text-muted">국어 수행평가</span>
-        <h1 className="m-0 font-display text-[34px] font-normal">「진달래꽃」 감상문 리포트</h1>
-      </div>
-      {error && <ErrorBox>{error}</ErrorBox>}
-      {summary && summary.students.length > 0 && <ClassSummary data={summary} />}
-      <section aria-label="학생 목록" className={`${card} flex flex-col gap-4 p-6 max-sm:p-4`}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div role="tablist" className="flex flex-wrap gap-1.5">
-            {tabs.map(([k, label]) => (
-              <button
-                key={k}
-                type="button"
-                role="tab"
-                aria-selected={filter === k}
-                onClick={() => setFilter(k)}
-                className={`min-h-[38px] cursor-pointer rounded-full px-3.5 text-[13px] ${filter === k ? "border-0 bg-ink font-bold text-white" : "border border-line-3 bg-white text-brown-dark"}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <button type="button" onClick={() => void load()} className="min-h-[38px] cursor-pointer rounded-full border border-line-3 bg-white px-3.5 text-[13px] text-sub">
-            새로고침
-          </button>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <span className="text-sm text-muted">2026학년도 2학기 · 수행평가</span>
+          <h1 className="m-0 font-display text-[38px] font-normal">{data.school}</h1>
         </div>
-        {rows === null ? (
-          <Loading />
-        ) : shown.length === 0 ? (
-          <p className="m-0 py-8 text-center text-sm text-muted">
-            {list.length === 0 ? "아직 응시한 학생이 없어요. 시연 데이터는 npm run seed:demo 로 만들 수 있어요." : "해당하는 학생이 없어요."}
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[560px] border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-b border-line text-[13px] text-muted">
-                  <th className="px-3 py-2.5 font-medium">학번</th>
-                  <th className="px-3 py-2.5 font-medium">이름</th>
-                  <th className="px-3 py-2.5 font-medium">상태</th>
-                  <th className="px-3 py-2.5 font-medium">도토리 (사용 / 목표)</th>
-                  <th className="px-3 py-2.5 font-medium">차단</th>
-                  <th className="px-3 py-2.5" />
-                </tr>
-              </thead>
-              <tbody>
-                {shown.map((r) => {
-                  const href = `/teacher/${encodeURIComponent(r.studentId)}`;
-                  return (
-                    <tr key={r.studentId} className="border-b border-dashed border-line last:border-0">
-                      <td className="px-3 py-3 text-muted">{r.studentId}</td>
-                      <td className="px-3 py-3 font-bold">
-                        <Link href={href} className="text-ink no-underline hover:text-brown">
-                          {r.name}
-                        </Link>
-                      </td>
-                      <td className="px-3 py-3">
-                        <span className={`rounded-full px-2.5 py-1 text-xs ${r.submitted ? "bg-leaf-bg text-leaf" : "bg-cream-2 text-brown"}`}>
-                          {r.submitted ? "제출" : "작성 중"}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3">
-                        <span className="font-display text-lg text-brown">{r.totalUsed}</span>
-                        <span className="text-muted"> / {r.totalPlanned}</span>
-                      </td>
-                      <td className={`px-3 py-3 ${r.blockedCount > 0 ? "font-bold text-alert" : "text-muted"}`}>{r.blockedCount}</td>
-                      <td className="px-3 py-3 text-right">
-                        <Link href={href} className="text-brown">
-                          보기 →
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <span className="text-xs text-muted">가상 학생 데이터만 사용해요.</span>
-      </section>
-    </TeacherShell>
-  );
-}
+        <Link href="/teacher/new" className={`${btn.primary} min-h-12 text-lg`}>
+          <Acorn size={18} /> 새 수행평가 만들기
+        </Link>
+      </div>
 
-/** 반 전체 요약: 숫자 카드 4개 + 항목별 질문(목표 vs 실제) + 질문 방식 분포 */
-function ClassSummary({ data }: { data: ClassReportResponse }) {
-  const n = data.students.length;
-  const submitted = data.students.filter((s) => s.submitted).length;
-  const totalUsed = data.students.reduce((a, s) => a + s.totalUsed, 0);
-  const avg = n ? (totalUsed / n).toFixed(1) : "0";
-  const blockedStudents = data.students.filter((s) => s.blockedCount > 0).length;
-  const { planned, used } = data.acornsByOutlineItem;
-  const itemMax = Math.max(1, ...planned, ...used);
-  const busiest = used.indexOf(Math.max(...used));
-  const typeTotals = data.matrix.types.map((_, ti) => data.matrix.counts.reduce((a, row) => a + row[ti], 0));
-  const typeSum = typeTotals.reduce((a, b) => a + b, 0);
-
-  const stats: [string, string, string?][] = [
-    [`${submitted} / ${n}`, "제출"],
-    [avg, "평균 도토리"],
-    [String(data.blockedTotal), "대신 써 달라는 요청 (차단)", data.blockedTotal > 0 ? "text-alert" : undefined],
-    [String(blockedStudents), "차단이 있었던 학생", blockedStudents > 0 ? "text-alert" : undefined],
-  ];
-
-  return (
-    <section aria-label="반 전체 요약" className="flex flex-col gap-4">
       <div className="grid grid-cols-4 gap-3 max-md:grid-cols-2">
-        {stats.map(([v, l, tone]) => (
+        {stats.map(([v, l]) => (
           <div key={l} className={`${card} flex flex-col gap-1 px-5 py-4`}>
-            <span className={`font-display text-[32px] leading-none ${tone ?? "text-brown"}`}>{v}</span>
+            <span className={`font-display text-[32px] leading-none ${l.includes("차단") && blocked > 0 ? "text-alert" : "text-brown"}`}>{v}</span>
             <span className="text-[13px] text-muted">{l}</span>
           </div>
         ))}
       </div>
-      <div className="flex flex-wrap gap-4">
-        <div className={`${card} flex min-w-0 flex-[1_1_420px] flex-col gap-3 p-6`}>
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="m-0 font-display text-xl font-normal">어디서 질문이 많았나</h2>
-            {used[busiest] > 0 && (
-              <span className="text-[13px] text-sub">
-                가장 많이 물은 항목: <b className="text-brown">{SHORT_ITEMS[busiest]}</b>
-              </span>
-            )}
-          </div>
-          {SHORT_ITEMS.map((label, i) => (
-            <div key={label} className="flex items-center gap-3 text-sm">
-              <span className="w-24 flex-none text-sub">{label}</span>
-              <div className="relative h-3.5 flex-1 rounded-full bg-[#F3E6D3]">
-                <div className="absolute inset-y-0 left-0 rounded-full border-2 border-dashed border-nut" style={{ width: `${(planned[i] / itemMax) * 100}%` }} />
-                <div className={`absolute inset-y-0.5 left-0 rounded-full ${i === busiest && used[i] > 0 ? "bg-brown" : "bg-nut"}`} style={{ width: `${(used[i] / itemMax) * 100}%` }} />
-              </div>
-              <span className="w-20 flex-none text-right text-xs text-muted">
-                {used[i]} / 목표 {planned[i]}
-              </span>
-            </div>
-          ))}
-          <span className="text-xs text-muted">채운 막대는 실제 질문, 점선은 학생들이 정한 목표의 합이에요. 수업에서 더 다룰 부분을 찾는 데 써 보세요.</span>
-        </div>
-        <div className={`${card} flex min-w-0 flex-[1_1_320px] flex-col gap-3 p-6`}>
-          <h2 className="m-0 font-display text-xl font-normal">어떤 질문을 했나</h2>
-          {typeSum === 0 ? (
-            <span className="text-sm text-muted">아직 분류된 질문이 없어요.</span>
-          ) : (
-            data.matrix.types.map((t, i) => (
-              <div key={t} className="flex items-center gap-3 text-sm">
-                <span className="w-28 flex-none text-sub">{t}</span>
-                <div className="h-3.5 flex-1 rounded-full bg-[#F3E6D3]">
-                  <div className={`h-3.5 rounded-full ${t === "대신 작성 요청" ? "bg-alert" : "bg-leaf"}`} style={{ width: `${(typeTotals[i] / typeSum) * 100}%` }} />
+
+      {GRADES.map((g) => (
+        <section key={g} aria-label={`${g}학년`} className="flex flex-col gap-3">
+          <h2 className="m-0 font-display text-2xl font-normal">{g}학년</h2>
+          <div className="grid grid-cols-4 gap-3 max-lg:grid-cols-2 max-sm:grid-cols-1">
+            {data.classes
+              .filter((c) => c.classId.startsWith(`${g}-`))
+              .map((c) => (
+                <div key={c.classId} className={`${card} flex flex-col gap-3 p-5`}>
+                  <span className="font-display text-xl">{classLabel(c.classId)}</span>
+                  {c.exams.length === 0 && <span className="text-sm text-muted">열린 수행평가가 없어요</span>}
+                  {c.exams.map((x) => {
+                    const e = examById.get(x.examId);
+                    if (!e) return null;
+                    const pct = x.total ? Math.round((x.submitted / x.total) * 100) : 0;
+                    return (
+                      <Link
+                        key={x.examId}
+                        href={`/teacher/class/${c.classId}?exam=${x.examId}`}
+                        className="flex flex-col gap-2 rounded-2xl border border-line bg-paper px-3.5 py-3 text-ink no-underline transition-colors hover:border-nut"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${subjectClass(e.subject)}`}>{e.subject}</span>
+                          <span className="min-w-0 truncate text-sm font-bold">{e.title}</span>
+                        </span>
+                        <span className="h-1.5 overflow-hidden rounded-full bg-[#F3E6D3]" aria-hidden="true">
+                          <span className="block h-1.5 rounded-full bg-nut" style={{ width: `${pct}%` }} />
+                        </span>
+                        <span className="flex flex-wrap gap-x-3 text-xs text-muted">
+                          <span>제출 {x.submitted}/{x.total}</span>
+                          <span>평균 도토리 {x.avgAcorns}</span>
+                          {x.blocked > 0 && <span className="font-bold text-alert">차단 {x.blocked}</span>}
+                        </span>
+                      </Link>
+                    );
+                  })}
                 </div>
-                <span className="w-10 flex-none text-right text-xs text-muted">{typeTotals[i]}</span>
-              </div>
-            ))
-          )}
-          <span className="text-xs text-muted">질문 수가 많거나 목표와 다르다고 부적절한 것은 아니에요. 판정이 아닌 수업 단서예요.</span>
-        </div>
-      </div>
-    </section>
+              ))}
+          </div>
+        </section>
+      ))}
+      <span className="text-xs text-muted">가상 학교·가상 학생 데이터예요. 실제 학생 정보는 없어요.</span>
+    </TeacherShell>
   );
 }

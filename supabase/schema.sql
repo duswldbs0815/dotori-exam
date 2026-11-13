@@ -1,85 +1,25 @@
--- 도토리 시험지 DB 초안 (Supabase / Postgres)
+-- 도토리 시험지 저장소 (Supabase / Postgres)
+-- Supabase 대시보드 > SQL Editor에 붙여 넣고 한 번 실행하면 됩니다.
+-- 서버(service_role 키)만 읽고 쓰도록 RLS를 켜고 정책은 만들지 않습니다. (브라우저 anon 키로는 접근 불가)
+-- 예전 설계 초안은 schema-draft-v0.sql
 
-create table users (
-  id uuid primary key default gen_random_uuid(),
-  role text not null check (role in ('teacher', 'student')),
-  name text not null,
-  class_name text,
-  created_at timestamptz default now()
+create table if not exists dotori_attempts (
+  id text primary key,                 -- 응시 기록 ID (학번 또는 학번_시험ID)
+  class_id text not null,              -- "2-3"
+  exam_id text not null,               -- "kor2"
+  data jsonb not null,                 -- AttemptRecord 전체 (src/lib/store.ts)
+  updated_at timestamptz not null default now()
+);
+create index if not exists dotori_attempts_class_exam on dotori_attempts (class_id, exam_id);
+
+create table if not exists dotori_exams (
+  id text primary key,                 -- 교사가 만든 수행평가 ID (t + 6자리)
+  data jsonb not null,                 -- ExamDef 전체 (src/lib/types.ts)
+  updated_at timestamptz not null default now()
 );
 
-create table exams (
-  id uuid primary key default gen_random_uuid(),
-  teacher_id uuid references users(id),
-  title text not null,
-  subject text not null,
-  question_budget int not null default 8,   -- 시험 전체 질문 한도
-  rules jsonb default '{}'::jsonb,          -- AI 규칙 (정답 금지, 답변 길이 등)
-  status text not null default 'draft',     -- draft / open / closed
-  created_at timestamptz default now()
-);
+alter table dotori_attempts enable row level security;
+alter table dotori_exams enable row level security;
 
-create table exam_items (
-  id uuid primary key default gen_random_uuid(),
-  exam_id uuid references exams(id) on delete cascade,
-  item_order int not null,
-  prompt text not null,
-  answer_key text,                          -- AI에게만 전달, 학생에게 노출 금지
-  rubric jsonb default '{}'::jsonb
-);
-
-create table attempts (
-  id uuid primary key default gen_random_uuid(),
-  exam_id uuid references exams(id) on delete cascade,
-  student_id uuid references users(id),
-  started_at timestamptz default now(),
-  submitted_at timestamptz,
-  verified boolean default false,           -- 본인 인증 (시연은 모의)
-  budget_left int not null
-);
-
-create table messages (
-  id uuid primary key default gen_random_uuid(),
-  attempt_id uuid references attempts(id) on delete cascade,
-  item_id uuid references exam_items(id),
-  role text not null check (role in ('student', 'ai')),
-  content text not null,
-  stage text,                               -- 질문 단계 (예: 내용 생성)
-  style text,                               -- 질문 방식 (대신 해 줘 / 확인해 줘 / 넓혀 줘 / 점검해 줘)
-  charged boolean default false,            -- 질문권 차감 여부
-  created_at timestamptz default now()
-);
-
-create table snapshots (
-  id uuid primary key default gen_random_uuid(),
-  attempt_id uuid references attempts(id) on delete cascade,
-  item_id uuid references exam_items(id),
-  text text not null,
-  reason text not null check (reason in ('autosave', 'question', 'submit')),
-  created_at timestamptz default now()
-);
-
-create table events (
-  id uuid primary key default gen_random_uuid(),
-  attempt_id uuid references attempts(id) on delete cascade,
-  type text not null check (type in ('paste', 'blur')),
-  detail jsonb default '{}'::jsonb,
-  created_at timestamptz default now()
-);
-
-create table answers (
-  attempt_id uuid references attempts(id) on delete cascade,
-  item_id uuid references exam_items(id),
-  final_text text,
-  primary key (attempt_id, item_id)
-);
-
-create table grades (
-  id uuid primary key default gen_random_uuid(),
-  attempt_id uuid references attempts(id) on delete cascade,
-  item_id uuid references exam_items(id),
-  ai_result jsonb,                          -- AI 가채점 결과와 근거
-  teacher_score numeric,
-  comment text,
-  confirmed boolean default false
-);
+-- "새 표 자동 공개"를 끈 프로젝트에서도 서버 키(service_role)로는 읽고 쓸 수 있게
+grant select, insert, update, delete on dotori_attempts, dotori_exams to service_role;
