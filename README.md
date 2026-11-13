@@ -2,7 +2,7 @@
 
 AI 사용의 흔적이 남는 수행평가 프로그램. 2026 INHA AX-EDU 해커톤 팀 도토리.
 
-학생은 「진달래꽃」 비평문을 쓰다가 시험지 안의 AI에게 도토리 1개씩 내고 질문합니다. AI는 3문장 이내로 답하고, 글을 대신 써 달라는 요청은 차단합니다(도토리 차감 없음). 질문한 위치·시간·질문·답과 질문 전후의 글이 기록되어, 교사에게만 리포트로 보입니다.
+학생은 「진달래꽃」 비평문을 쓰다가 시험지 안의 AI에게 도토리 1개씩 내고 질문합니다. AI는 질문에 답하되, 글을 대신 써 달라는 요청은 차단합니다(도토리 차감 없음). 질문한 위치·시간·질문·답과 질문 전후의 글이 기록되어, 교사에게만 리포트로 보입니다.
 
 ## 흐름
 
@@ -22,7 +22,7 @@ npm run dev
 
 - AI 호출: `src/lib/llm.ts` (BAZE API Gateway). 연결 확인은 `GET /api/health/llm`
 - 공용 타입: `src/lib/types.ts`
-- 시험 설정 (도토리 개수, AI 답변 문장 수 등 미정 값): `src/lib/exam-config.ts`
+- 시험 설정 (도토리 안전 상한 등): `src/lib/exam-config.ts`
 - 저장: 시연은 로컬 실행 + JSON 파일. 웹 배포 시 Supabase로 교체 (`supabase/schema.sql`은 확장용 초안)
 
 ## API
@@ -32,7 +32,7 @@ npm run dev
 | API | 기능 | 우선 |
 |---|---|---|
 | `POST /api/exam/start` | 응시 시작, 본인 확인 기록 | P0 |
-| `POST /api/outline` | 개요 4항목 저장 | P1 |
+| `POST /api/outline` | 개요 4항목 + 항목별 도토리 계획 저장 | P0 |
 | `POST /api/draft` | 글 저장 (10초마다) | P0 |
 | `POST /api/ask` | 질문 → 차단 판별 → 답변 → 분류 → 직전 글 저장 → 도토리 차감 | P0 |
 | `GET /api/attempt/:attemptId` | 학생 화면 상태 복원, 항목별 도토리 수 | P0 |

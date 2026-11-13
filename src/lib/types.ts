@@ -11,22 +11,26 @@ export type QuestionType = (typeof QUESTION_TYPES)[number];
 export type OutlineItemNo = 1 | 2 | 3 | 4;
 export type Outline = [string, string, string, string];
 export type Reflection = [string, string, string, string];
+/** 개요 항목 4개에 대한 숫자 (도토리 계획 수, 사용 수 등) */
+export type PerItem = [number, number, number, number];
 
 export type ExamInfo = {
   title: string;
   outlineItems: readonly string[];
-  acornTotal: number;
-  maxAnswerSentences: number;
+  /** 개요 항목 하나에 계획할 수 있는 최대 도토리 (안전 상한) */
+  acornPlanMaxPerItem: number;
+  /** 시험 전체에서 쓸 수 있는 최대 질문 수 (안전 상한, 학생에게 안 보임) */
+  acornSafetyCap: number;
 };
 
 export type ApiError = { error: string };
 
 // POST /api/exam/start
 export type StartRequest = { studentId: string; name: string; verified: boolean };
-export type StartResponse = { attemptId: string; exam: ExamInfo; acornsLeft: number };
+export type StartResponse = { attemptId: string; exam: ExamInfo };
 
-// POST /api/outline
-export type OutlineRequest = { attemptId: string; outline: Outline };
+// POST /api/outline : 개요 4항목 + 항목별 도토리 계획
+export type OutlineRequest = { attemptId: string; outline: Outline; acornPlan: PerItem };
 export type OkResponse = { ok: true };
 
 // POST /api/draft
@@ -47,7 +51,10 @@ export type AskResponse = {
   charged: boolean;
   acornNo: number | null;
   answer: string;
-  acornsLeft: number;
+  /** 질문한 개요 항목의 계획과 사용 (차감 반영 후) */
+  item: { outlineItem: OutlineItemNo; planned: number; used: number };
+  /** 그 항목이 목표치(acornPlan)보다 많이 쓰였는지. 기록용이며 질문을 막지 않음 */
+  overPlan: boolean;
 };
 
 // GET /api/attempt/:attemptId (학생 화면용: 분류·비교 정보 없음)
@@ -62,9 +69,9 @@ export type StudentQuestion = {
 export type AttemptStateResponse = {
   attemptId: string;
   outline: Outline | null;
+  acornPlan: PerItem | null;
+  acornsUsed: PerItem;
   draft: string;
-  acornsLeft: number;
-  acornsByOutlineItem: [number, number, number, number];
   questions: StudentQuestion[];
   submitted: boolean;
 };
@@ -92,7 +99,8 @@ export type StudentReportResponse = {
   final: string;
   reflection: Reflection | null;
   submittedAt: string | null;
-  acorns: { used: number; byOutlineItem: [number, number, number, number] };
+  /** 계획 vs 실제 사용 (성찰지 그래프와 같은 데이터) */
+  acorns: { planned: PerItem | null; used: PerItem; totalPlanned: number; totalUsed: number };
   blockedCount: number;
   questions: ReportQuestion[];
   sentences: ReportSentence[];
@@ -100,8 +108,15 @@ export type StudentReportResponse = {
 
 // GET /api/report/class (교사용, P2)
 export type ClassReportResponse = {
-  students: { studentId: string; name: string; acornsUsed: number; blockedCount: number; submitted: boolean }[];
+  students: {
+    studentId: string;
+    name: string;
+    totalPlanned: number;
+    totalUsed: number;
+    blockedCount: number;
+    submitted: boolean;
+  }[];
   matrix: { stages: readonly Stage[]; types: readonly QuestionType[]; counts: number[][] };
-  acornsByOutlineItem: [number, number, number, number];
+  acornsByOutlineItem: { planned: PerItem; used: PerItem };
   blockedTotal: number;
 };
