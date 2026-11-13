@@ -125,7 +125,9 @@ function sentencePaths(rec: AttemptRecord, final: string): ReportSentence[] {
 export function buildStudentReport(rec: AttemptRecord): StudentReportResponse {
   const final = rec.final ?? rec.draft;
   const questions: ReportQuestion[] = rec.questions.map((q, i) => {
-    const after = i + 1 < rec.questions.length ? rec.questions[i + 1].before : final;
+    // "질문 후" = 다음 답변 받은 질문 직전의 글 (차단된 요청은 답이 없으니 건너뜀). 없으면 최종 글
+    const next = rec.questions.slice(i + 1).find((n) => !n.blocked);
+    const after = next ? next.before : final;
     return {
       acornNo: q.acornNo,
       time: q.time,
