@@ -4,7 +4,7 @@ import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { dbGet, dbGetVersioned, dbList, dbPut, dbSaveIfUnchanged, hasDb } from "./db";
 import { DEFAULT_CLASS_ID, DEFAULT_EXAM_ID } from "./school";
-import type { Outline, OutlineItemNo, PerItem, QuestionType, ReportSentence, Reflection, Stage } from "./types";
+import type { Grade, Outline, OutlineItemNo, PerItem, QuestionType, ReportSentence, Reflection, Stage } from "./types";
 
 export type QuestionRecord = {
   acornNo: number | null;
@@ -21,6 +21,34 @@ export type QuestionRecord = {
   type: QuestionType | null;
   before: string; // 질문 직전 글 전체
 };
+
+/** 글이 한 번 저장될 때 바뀐 부분: at 위치에서 del글자 지우고 ins를 넣음 */
+export type DraftEdit = { t: string; at: number; del: number; ins: string };
+
+const MAX_LOG = 3000;
+
+/** 이전 글 → 새 글의 바뀐 부분 (앞뒤 같은 부분을 뺀 가운데) */
+export function editOf(prev: string, next: string, t: string): DraftEdit | null {
+  if (prev === next) return null;
+  let p = 0;
+  const max = Math.min(prev.length, next.length);
+  while (p < max && prev[p] === next[p]) p++;
+  let s = 0;
+  while (s < max - p && prev[prev.length - 1 - s] === next[next.length - 1 - s]) s++;
+  return { t, at: p, del: prev.length - p - s, ins: next.slice(p, next.length - s) };
+}
+
+/** 글을 바꿔 저장하면서 변화 기록도 한 줄 쌓음 */
+export function withDraft(rec: AttemptRecord, text: string, at: string): AttemptRecord {
+  const edit = editOf(rec.draft, text, at);
+  const log = rec.draftLog ?? [];
+  return {
+    ...rec,
+    draft: text,
+    draftSavedAt: at,
+    ...(edit && log.length < MAX_LOG ? { draftLog: [...log, edit] } : {}),
+  };
+}
 
 export type AttemptRecord = {
   attemptId: string;
@@ -41,6 +69,10 @@ export type AttemptRecord = {
   final: string | null;
   reflection: Reflection | null;
   submittedAt: string | null;
+  /** 🔄 교사 채점 */
+  grade?: Grade | null;
+  /** 🔄 글 변화 기록 (타임랩스): 저장할 때마다 바뀐 부분만. 교사 리포트 전용 */
+  draftLog?: DraftEdit[];
   /** 제출 후 AI가 판정한 문장별 작성 경로 (없으면 리포트에서 1차 판정 사용) */
   sentencePaths?: ReportSentence[] | null;
   /** 위 판정을 어떤 글로 했는지 (글이 바뀌면 다시 판정) */

@@ -7,6 +7,8 @@ import { api, ApiError, hhmm, shortLabels } from "@/lib/api-client";
 import { classLabel, SCHOOL_NAME } from "@/lib/school";
 import type { DiffPart, ReportQuestion, SentencePath, StudentReportResponse } from "@/lib/types";
 import { btn, card, ErrorBox, Loading } from "../ui";
+import { Grading } from "./Grading";
+import { Timelapse, type TimelapseHandle } from "./Timelapse";
 import { TeacherLogin, TeacherShell } from "./TeacherShell";
 
 const PATH_LABEL: Record<SentencePath, string> = { self: "스스로 작성", revised: "질문 후 수정", ai: "AI 답 활용" };
@@ -67,6 +69,7 @@ export function TeacherReport() {
   const [pathOn, setPathOn] = useState(false);
   const [open, setOpen] = useState<number | null>(null);
   const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
+  const lapse = useRef<TimelapseHandle>(null);
 
   const [nonce, setNonce] = useState(0);
   const [send, setSend] = useState(false);
@@ -275,6 +278,10 @@ export function TeacherReport() {
           </section>
         </aside>
       </div>
+
+      <Grading studentId={studentId} data={data} onSeek={(t) => lapse.current?.seek(t)} />
+
+      <Timelapse ref={lapse} data={data.timelapse} questions={data.questions} />
 
       <section aria-label="개요와 성찰지" className={`${card} grid grid-cols-2 gap-6 px-9 py-7 max-md:grid-cols-1 max-sm:px-5`}>
         <div className="flex flex-col gap-3">

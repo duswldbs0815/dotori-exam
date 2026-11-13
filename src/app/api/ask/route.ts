@@ -1,7 +1,7 @@
 import { requireOwner } from "@/lib/auth";
 import { examOf } from "@/lib/exams";
 import { fail, handle, nowIso, readJson } from "@/lib/http";
-import { isValidId, loadAttempt, totalUsed, updateAttempt, usedPerItem, type QuestionRecord } from "@/lib/store";
+import { isValidId, loadAttempt, totalUsed, type QuestionRecord, updateAttempt, usedPerItem, withDraft } from "@/lib/store";
 import { MAX, checkLength, oneAtATime } from "@/lib/limits";
 import { tutor } from "@/lib/tutor";
 import type { AskRequest, AskResponse, OutlineItemNo } from "@/lib/types";
@@ -61,7 +61,7 @@ export const POST = handle(async (req: Request) => {
     };
 
     return {
-      rec: { ...rec, draft, draftSavedAt: nowIso(), questions: [...rec.questions, q] },
+      rec: { ...withDraft(rec, draft, q.time), questions: [...rec.questions, q] },
       result: {
         blocked: result.blocked,
         charged,

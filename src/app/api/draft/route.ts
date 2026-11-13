@@ -1,7 +1,7 @@
 import { requireOwner } from "@/lib/auth";
 import { MAX, checkLength } from "@/lib/limits";
 import { fail, handle, nowIso, readJson } from "@/lib/http";
-import { isValidId, updateAttempt } from "@/lib/store";
+import { isValidId, updateAttempt, withDraft } from "@/lib/store";
 import type { DraftRequest, DraftResponse } from "@/lib/types";
 
 export const POST = handle(async (req: Request) => {
@@ -16,7 +16,7 @@ export const POST = handle(async (req: Request) => {
     if (rec.submittedAt) fail(409, "이미 제출한 시험이에요.");
     if (rec.draft === body.text) return { rec: null, result: rec.draftSavedAt ?? nowIso() }; // 바뀐 게 없으면 저장 생략
     const at = nowIso();
-    return { rec: { ...rec, draft: body.text, draftSavedAt: at }, result: at };
+    return { rec: withDraft(rec, body.text, at), result: at };
   });
 
   const res: DraftResponse = { ok: true, savedAt };

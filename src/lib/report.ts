@@ -1,7 +1,8 @@
 // 서버 전용: 교사 리포트 만들기 (전후 비교, 작성 경로 판정, 반 전체 집계)
 import DiffMatchPatch from "diff-match-patch";
+import { DEFAULT_MAX, DEFAULT_SCALE } from "./grading";
 import { DEFAULT_CLASS_ID, toStudentExam } from "./school";
-import { totalUsed, usedPerItem, type AttemptRecord } from "./store";
+import { editOf, totalUsed, usedPerItem, type AttemptRecord } from "./store";
 import {
   QUESTION_TYPES,
   STAGES,
@@ -11,7 +12,10 @@ import {
   type PerItem,
   type ReportQuestion,
   type ReportSentence,
+  type CheckFlag,
   type StudentReportResponse,
+  type Timelapse,
+  type TimelapseEdit,
 } from "./types";
 
 /** AI 답과 이 정도 이상 비슷하면 "AI 답변 활용" */
@@ -123,6 +127,53 @@ function sentencePaths(rec: AttemptRecord, final: string): ReportSentence[] {
   return heuristicPaths(pathCandidates(rec, final));
 }
 
+/** 한 번 저장에 이만큼 넘게 생기면 "한꺼번에 들어온 글"로 표시 (판정이 아니라 확인할 구간 표시) */
+const PASTE_CHARS = 80;
+const PASTE_WINDOW_MS = 20_000;
+
+/** 타임랩스: 실제 저장 기록이 있으면 그걸, 없으면 질문 직전 글들과 최종 글로 만듦 */
+export function buildTimelapse(rec: AttemptRecord, final: string): Timelapse {
+  const log = rec.draftLog ?? [];
+  if (log.length) {
+    let prevT = Date.parse(rec.startedAt);
+    const edits = log.map((e) => {
+      const now = Date.parse(e.t);
+      const paste = e.ins.length >= PASTE_CHARS && now - prevT <= PASTE_WINDOW_MS;
+      prevT = now;
+      return paste ? { ...e, paste } : e;
+    });
+    return { start: rec.startedAt, source: "log", edits };
+  }
+  const snaps: { t: string; text: string }[] = rec.questions.map((q) => ({ t: q.time, text: q.before }));
+  snaps.push({ t: rec.submittedAt ?? rec.draftSavedAt ?? rec.startedAt, text: final });
+  const edits: TimelapseEdit[] = [];
+  let prev = "";
+  for (const s of snaps) {
+    const e = editOf(prev, s.text, s.t);
+    if (e) edits.push(e);
+    prev = s.text;
+  }
+  return { start: rec.startedAt, source: "snapshots", edits };
+}
+
+/** 먼저 확인할 학생 표시. 점수·판정이 아니라 "이 부분을 보세요" */
+export function checkFlags(rec: AttemptRecord): CheckFlag[] {
+  const flags: CheckFlag[] = [];
+  const final = rec.final ?? rec.draft;
+  const pastes = (rec.draftLog?.length ? buildTimelapse(rec, final).edits : []).filter((e) => e.paste).length;
+  if (pastes) flags.push({ code: "paste", label: `한꺼번에 들어온 글 ${pastes}번` });
+  const blocked = rec.questions.filter((q) => q.blocked).length;
+  if (blocked >= 2) flags.push({ code: "blocked", label: `대신 써 달라는 요청 ${blocked}번` });
+  const plan = rec.acornPlan ? rec.acornPlan.reduce((a, b) => a + b, 0) : 0;
+  const used = totalUsed(rec);
+  if (plan > 0 && used - plan >= 4) flags.push({ code: "over", label: `계획보다 질문 ${used - plan}개 많음` });
+  if (final) {
+    const ai = sentencePaths(rec, final).filter((s) => s.path === "ai").length;
+    if (ai >= 2) flags.push({ code: "ai", label: `AI 답과 비슷한 문장 ${ai}개` });
+  }
+  return flags;
+}
+
 export function buildStudentReport(rec: AttemptRecord, examDef: ExamDef): StudentReportResponse {
   const final = rec.final ?? rec.draft;
   const questions: ReportQuestion[] = rec.questions.map((q, i) => {
@@ -165,6 +216,10 @@ export function buildStudentReport(rec: AttemptRecord, examDef: ExamDef): Studen
     blockedCount: rec.questions.filter((q) => q.blocked).length,
     questions,
     sentences: final ? sentencePaths(rec, final) : [],
+    timelapse: buildTimelapse(rec, final),
+    grade: rec.grade ?? null,
+    grading: { scale: examDef.grading?.scale ?? DEFAULT_SCALE, max: examDef.grading?.max ?? DEFAULT_MAX },
+    flags: checkFlags(rec),
   };
 }
 
@@ -196,6 +251,8 @@ export function buildClassReport(recs: AttemptRecord[], examDef?: ExamDef): Clas
       name: r.student.name,
       totalPlanned: r.acornPlan ? r.acornPlan.reduce((a, b) => a + b, 0) : 0,
       totalUsed: totalUsed(r),
+      flags: checkFlags(r),
+      grade: r.grade ?? null,
       blockedCount: r.questions.filter((q) => q.blocked).length,
       submitted: r.submittedAt !== null,
     })),

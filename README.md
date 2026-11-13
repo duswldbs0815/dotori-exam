@@ -32,6 +32,7 @@ npm run dev
 - 시험 설정 (도토리 안전 상한 등): `src/lib/exam-config.ts`
 - 저장: `SUPABASE_URL`과 `SUPABASE_SERVICE_ROLE_KEY`가 있으면 Supabase(`dotori_attempts`, `dotori_exams` 표, `src/lib/db.ts`), 없으면 로컬 JSON 파일(`data/attempts/`, `data/exams/`, git 제외). 표 만들기는 `supabase/schema.sql`. 어디에 저장 중인지 확인: `GET /api/health/storage` → `"storage":"supabase"`
 - 가상 학교 데이터: `npm run seed:school` → 12개 반 가상 학생 응시 기록 (`src/data/school.json`, `scripts/demo-data/school-content.json`). Supabase로 올리기: `npm run push:supabase`
+- 타임랩스용 글 변화 기록: `node scripts/add-draft-logs.mjs` → 시드 기록(학생 열쇠가 없는 것)에 10초 저장 기록을 만들어 넣음. 일부(약 8%)는 붙여 넣은 구간 포함. LLM 호출 없음. 시드를 새로 만든 뒤 다시 실행
 - 가상 학생 글 변형: `npm run gen:variants -- <examId> <개수>` → 교사팀 S01~S03 장문 데이터를 본보기로 AI가 새 학생 글·질문을 만들어 `scripts/demo-data/generated-variants.json`에 저장. `seed:school`이 이 변형을 섞어 씀 (손으로 쓴 고정 문장 대신). ⚠️ LLM 크레딧을 많이 씀
 - 시연용 가상 학생 만들기: `npm run seed:demo` → `S01`~`S03` (교사팀이 만든 가상 데이터 `scripts/demo-data/teacher-demo-students.json`). A: 계획 3·허용 2 / B: 계획 4·허용 11 / C: 계획 5·허용 6·대신 써 달라는 요청 차단 2
 - AI 답변·차단·분류: `src/lib/tutor.ts` / 교사 리포트(전후 비교, 작성 경로, 반 집계): `src/lib/report.ts`
@@ -64,7 +65,9 @@ Vercel 같은 서버리스에서는 파일 저장이 유지되지 않으므로 *
 | `GET /api/attempt/:attemptId` | 학생 화면 상태 복원, 항목별 도토리 수 | P0 |
 | `POST /api/submit` | 최종 글과 성찰지 제출 | P0 |
 | `GET /api/report/:studentId` | 교사용 학생 리포트 (메모, 전후 비교, 작성 경로) | P0 |
-| `GET /api/report/class?classId=&examId=` | 교사용 반 전체 집계 | P1 |
+| `GET /api/report/class?classId=&examId=` | 교사용 반 전체 집계 (+ 먼저 확인할 점) | P1 |
+| `POST /api/report/:studentId/grade` | 교사 채점 저장 (단계 선택, 자동 저장) | P1 |
+| `GET /api/report/class/csv?classId=&examId=` | 반 채점표 CSV | P1 |
 | `GET /api/me` · `POST /api/me/login` · `POST /api/me/logout` | 학생 내 학습 기록 (학생용 값만) | P1 |
 | `GET /api/exams?classId=` | 반에 열린 수행평가 목록 (학생 시작 화면) | P1 |
 | `GET /api/teacher/school` | 학교 전체 반·수행평가 진행 현황 | P1 |

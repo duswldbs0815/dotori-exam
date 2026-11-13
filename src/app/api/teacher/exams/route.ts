@@ -2,6 +2,7 @@ import { requireTeacher } from "@/lib/auth";
 import { saveExam } from "@/lib/exams";
 import { fail, handle, readJson } from "@/lib/http";
 import { CLASS_IDS, GRADES, SUBJECTS } from "@/lib/school";
+import { DEFAULT_MAX, GRADE_SCALES } from "@/lib/grading";
 import type { SaveExamRequest, SaveExamResponse } from "@/lib/types";
 
 const str = (v: unknown, max = 300) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -45,6 +46,9 @@ export const POST = handle(async (req: Request) => {
     rationale: str(b.rationale, 400),
     ...(b.passage && str(b.passage.body, 8000)
       ? { passage: { title: str(b.passage.title, 80) || "지문", author: str(b.passage.author, 60) || undefined, body: str(b.passage.body, 8000), source: str(b.passage.source, 120) || undefined } }
+      : {}),
+    ...(b.grading && GRADE_SCALES.some((s) => s.id === b.grading?.scale)
+      ? { grading: { scale: b.grading.scale, ...(b.grading.scale === "points" ? { max: Math.max(1, Math.min(1000, Math.round(Number(b.grading.max) || DEFAULT_MAX))) } : {}) } }
       : {}),
   });
   const res: SaveExamResponse = { exam };

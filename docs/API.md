@@ -255,13 +255,22 @@
     { "text": "제출한 글의 한 문장", "path": "self" },
     { "text": "…", "path": "revised", "acornNo": 2 },
     { "text": "…", "path": "ai", "acornNo": 2 }
-  ]
+  ],
+  "timelapse": {
+    "start": "2026-11-14T09:00:00+09:00",
+    "source": "log",
+    "edits": [
+      { "t": "2026-11-14T09:04:10+09:00", "at": 0, "del": 0, "ins": "김소월의 「진달래꽃」은" },
+      { "t": "2026-11-14T09:12:30+09:00", "at": 120, "del": 0, "ins": "한 번에 들어온 긴 글…", "paste": true }
+    ]
+  }
 }
 ```
 - 메모 붙이기: 각 질문의 `selectedText`를 `final`에서 찾아 그 위치 옆에 메모를 붙입니다. 못 찾으면 글 맨 끝 여백에 붙입니다. (글이 바뀌면 숫자 위치는 어긋나므로 문장으로 찾습니다.)
 - `after`: 다음 질문 직전 글, 마지막 질문이면 제출한 글
 - `stage`: 계획하기 / 내용 생성 / 내용 조직 / 표현하기 / 고쳐쓰기
 - `type`: 사실 확인 요청 / 생각 확장 요청 / 글 점검 요청 / 대신 작성 요청
+- 🔄 `timelapse` (글쓰기 과정 다시 보기, 교사 전용): 빈 글에 `edits`를 차례로 적용하면 최종 글이 됩니다. 각 수정은 "`at` 위치에서 `del`글자를 지우고 `ins`를 넣음". `paste: true`는 20초 안에 80자 이상이 한 번에 생긴 구간 (판정이 아니라 확인할 구간 표시). `source: "snapshots"`는 저장 기록이 없는 예전 응시라 질문 직전 글과 최종 글로 만든 것
 - `sentences[].path`: 문장별 작성 경로 (교사가 참고할 단서이며 판정이 아님. 화면에 "참고용" 안내를 붙여 주세요)
   - `self`: 스스로 작성 (첫 질문 전부터 있던 문장, 또는 질문 뒤에 썼지만 AI 답과 관계없는 문장)
   - `revised`: 질문 후 AI 답의 내용을 자기 말로 반영
@@ -325,3 +334,29 @@ AI가 자료와 채점기준표를 읽고 개요 4항목, 항목별 `itemGuides`
 ## 🔄 지문 (passage)
 
 `ExamInfo.passage = { title, author?, body, source? }`. `exam/start` 응답의 `exam`에 들어가고 (`GET /api/exams` 목록에는 제목만), 학생 화면 개요·글쓰기 옆에 보입니다. AI 튜터 지시문에도 지문(최대 3000자)이 들어갑니다. `POST /api/teacher/exams`에 `passage`를 넣으면 저장됩니다.
+
+## 🔄 채점 (11/14 추가, 교사)
+
+타입은 `src/lib/types.ts`의 `Grade`, `GradeRequest`, `CheckFlag`, 단계 목록은 `src/lib/grading.ts`의 `GRADE_SCALES`.
+
+### POST /api/report/:studentId/grade
+`{ scale: "3" | "5" | "pf" | "points", max?, items: (string|number|null)[], ai?, comment }`
+- `scale`: `3` 상·중·하 / `5` A~E / `pf` 통과·미통과 / `points` 점수 (`max` = 항목당 만점, 기본 25)
+- `items`: 개요 항목 수만큼. 단계 이름 또는 점수, 아직 안 매겼으면 `null`
+- `ai`: 교사가 "AI 활용" 항목을 켰을 때만
+- `comment`: 나이스·세특에 옮길 평가 근거 한 줄 (500자)
+- 화면에서 누를 때마다 자동 저장. 응답 `{ grade }`
+- 학생 리포트 응답에 `grade`, `grading`(수행평가 기본 단계), `flags`(먼저 확인할 점)가 함께 옵니다.
+
+### GET /api/report/class/csv?classId=&examId=
+반 채점표 CSV (엑셀에서 바로 열리게 UTF-8 BOM). 학번, 이름, 제출, 채점 단계, 항목별 값, (AI 활용), (합계), 평가 근거, 질문 수, 차단 수, 확인할 점.
+
+### 먼저 확인할 점 (`flags`, 판정 아님)
+| code | 조건 |
+|---|---|
+| `paste` | 타임랩스에서 20초 안에 80자 이상 한꺼번에 들어온 구간 |
+| `blocked` | 대신 써 달라는 요청 2번 이상 |
+| `over` | 계획보다 질문 4개 이상 많음 |
+| `ai` | AI 답과 70% 이상 비슷한 문장 2개 이상 |
+
+수행평가를 만들 때 `POST /api/teacher/exams`에 `grading: { scale, max? }`를 넣으면 그 수행평가의 기본 채점 단계가 됩니다.

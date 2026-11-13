@@ -56,6 +56,8 @@ export type ExamDef = ExamInfo & {
   classIds: string[];
   /** 교사가 올린 자료 (이름과 글자 수만 저장) */
   materials: { name: string; chars: number }[];
+  /** 🔄 기본 채점 단계 (없으면 상·중·하) */
+  grading?: { scale: GradeScale; max?: number };
   /** AI가 이 기준을 제안한 이유 */
   rationale: string;
   createdAt: string;
@@ -159,6 +161,32 @@ export type ReportQuestion = StudentQuestion & {
 };
 export type SentencePath = "self" | "revised" | "ai";
 export type ReportSentence = { text: string; path: SentencePath; acornNo?: number };
+/** 🔄 채점 (교사 전용). scale: 3 상·중·하 / 5 A~E / pf 통과·미통과 / points 점수 */
+export type GradeScale = "3" | "5" | "pf" | "points";
+export type Grade = {
+  scale: GradeScale;
+  /** 점수 채점일 때 항목별 만점 */
+  max?: number;
+  /** 개요 항목별 값 (단계 이름 또는 점수). 아직 안 매기면 null */
+  items: (string | number | null)[];
+  /** "AI 활용" 항목을 켰을 때만 있음 */
+  ai?: string | number | null;
+  /** 나이스·세특에 옮길 평가 근거 한 줄 (교사가 씀) */
+  comment: string;
+  gradedAt: string;
+};
+export type GradeRequest = Omit<Grade, "gradedAt">;
+/** 학생 확인이 필요한 이유 (판정이 아니라 먼저 볼 학생 표시) */
+export type CheckFlag = { code: "paste" | "blocked" | "over" | "ai"; label: string };
+
+/** 🔄 타임랩스: 글이 저장될 때마다 바뀐 부분. 처음 빈 글에 edits를 차례로 적용하면 최종 글 */
+export type TimelapseEdit = { t: string; at: number; del: number; ins: string; paste?: boolean };
+export type Timelapse = {
+  start: string;
+  /** log: 10초마다 저장한 실제 기록 / snapshots: 기록이 없는 예전 응시라 질문 직전 글과 최종 글로 만든 것 (구간이 큼) */
+  source: "log" | "snapshots";
+  edits: TimelapseEdit[];
+};
 export type StudentReportResponse = {
   student: { id: string; name: string };
   /** 학년-반, 수행평가 ID (반 리포트로 돌아가는 링크용) */
@@ -174,6 +202,12 @@ export type StudentReportResponse = {
   blockedCount: number;
   questions: ReportQuestion[];
   sentences: ReportSentence[];
+  timelapse: Timelapse;
+  /** 🔄 교사 채점 (아직 안 했으면 null) */
+  grade: Grade | null;
+  /** 이 수행평가의 기본 채점 단계 */
+  grading: { scale: GradeScale; max: number };
+  flags: CheckFlag[];
 };
 
 // 교사 로그인: POST /api/teacher/login, GET /api/teacher/me
@@ -191,6 +225,9 @@ export type ClassReportResponse = {
     totalUsed: number;
     blockedCount: number;
     submitted: boolean;
+    /** 🔄 먼저 확인할 이유 */
+    flags: CheckFlag[];
+    grade: Grade | null;
   }[];
   matrix: { stages: readonly Stage[]; types: readonly QuestionType[]; counts: number[][] };
   acornsByOutlineItem: { planned: PerItem; used: PerItem };

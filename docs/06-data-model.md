@@ -38,6 +38,8 @@
 | `final` | string \| null | 제출한 글 | `POST /api/submit` |
 | `reflection` | string[4] \| null | 성찰 질문 ①~④ 답 | `POST /api/submit` |
 | `submittedAt` | string (ISO) \| null | 제출 시각 | `POST /api/submit` |
+| `grade` | `Grade` \| null | 🔄 교사 채점: `scale`, `max?`, `items[]`, `ai?`, `comment`, `gradedAt`. 학생 API에는 넣지 않음 | `POST /api/report/:studentId/grade` |
+| `draftLog` | `{ t, at, del, ins }[]` | 🔄 글 변화 기록 (타임랩스). 글이 저장될 때마다 바뀐 부분만 한 줄 (전체 글을 매번 저장하지 않아 작음). 최대 3000줄. 교사 리포트에서만 씀 | `POST /api/draft`, `/api/ask`, `/api/submit` |
 
 개요 항목 이름(주제·배경지식 / 문법·어휘 / 해석과 근거 / 비평과 고쳐쓰기)은 기록에 넣지 않고 `exam-config.ts`의 `outlineItems`에 고정되어 있다.
 

@@ -8,6 +8,8 @@ import type { ExamDef, ExamSuggestion } from "@/lib/types";
 import { Acorn } from "../Acorn";
 import { Squirrel } from "../Squirrel";
 import { BackLink, btn, card, ErrorBox } from "../ui";
+import { DEFAULT_MAX, DEFAULT_SCALE, GRADE_SCALES } from "@/lib/grading";
+import type { GradeScale } from "@/lib/types";
 import { TeacherGate, TeacherShell } from "./TeacherShell";
 
 export function NewExam() {
@@ -42,6 +44,8 @@ function NewExamInner() {
   // 학생 시험지 옆에 보여 줄 지문·자료 (예: 시 전문, 실험 안내)
   const [passageTitle, setPassageTitle] = useState("");
   const [passageBody, setPassageBody] = useState("");
+  const [scale, setScale] = useState<GradeScale>(DEFAULT_SCALE);
+  const [maxPts, setMaxPts] = useState(DEFAULT_MAX);
 
   const gradeClasses = CLASS_IDS.filter((c) => c.startsWith(`${grade}-`));
   const step1Ok = task.trim().length > 0 && classIds.length > 0;
@@ -87,6 +91,7 @@ function NewExamInner() {
         materials: draft.materials,
         rationale: draft.rationale,
         ...(passageBody.trim() ? { passage: { title: passageTitle.trim() || "지문", body: passageBody.trim() } } : {}),
+        grading: { scale, ...(scale === "points" ? { max: maxPts } : {}) },
       });
       setSaved(exam);
       setStep(3);
@@ -354,6 +359,34 @@ function NewExamInner() {
             </div>
             <input value={passageTitle} onChange={(e) => setPassageTitle(e.target.value)} placeholder="제목 (예: 진달래꽃 — 김소월)" className={input} />
             <textarea rows={6} value={passageBody} onChange={(e) => setPassageBody(e.target.value)} placeholder="지문을 붙여 넣으세요" className={`${area} text-sm`} />
+          </section>
+
+          <section className={`${card} flex flex-col gap-3 p-7 max-sm:p-5`}>
+            <div className="flex flex-col gap-1">
+              <h2 className="m-0 font-display text-2xl font-normal">채점 단계</h2>
+              <span className="text-[13px] text-muted">학생 리포트에서 개요 항목마다 이 단계로 채점해요. 채점하면서 언제든 바꿀 수 있어요.</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {GRADE_SCALES.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  aria-pressed={scale === s.id}
+                  onClick={() => setScale(s.id)}
+                  className={`min-h-10 cursor-pointer rounded-full px-4 text-[14px] font-bold ${scale === s.id ? "border-0 bg-brown text-white" : "border border-line-3 bg-white text-sub"}`}
+                >
+                  {s.label}
+                  {s.levels && s.id !== "pf" && s.id !== "3" ? <span className="ml-1.5 font-normal opacity-70">({s.levels.join("·")})</span> : null}
+                </button>
+              ))}
+              {scale === "points" && (
+                <label className="flex items-center gap-1.5 text-[14px] text-muted">
+                  항목당
+                  <input type="number" min={1} max={1000} value={maxPts} onChange={(e) => setMaxPts(Math.max(1, Math.min(1000, Math.round(Number(e.target.value) || 1))))} className="h-10 w-16 rounded-lg border border-line-2 bg-white px-2 text-right font-bold text-ink" />
+                  점
+                </label>
+              )}
+            </div>
           </section>
 
           <section className={`${card} flex flex-col gap-3 p-7 max-sm:p-5`}>

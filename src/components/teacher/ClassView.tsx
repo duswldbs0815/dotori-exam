@@ -7,10 +7,11 @@ import { api, ApiError, shortLabels } from "@/lib/api-client";
 import { classLabel, SCHOOL_NAME } from "@/lib/school";
 import type { ClassReportResponse, SchoolOverviewResponse } from "@/lib/types";
 import { BackLink, card, ErrorBox, Loading } from "../ui";
+import { gradeDone } from "@/lib/grading";
 import { TeacherGate, TeacherShell } from "./TeacherShell";
 
 type Row = ClassReportResponse["students"][number];
-type Filter = "all" | "submitted" | "writing" | "blocked";
+type Filter = "all" | "check" | "submitted" | "writing" | "ungraded";
 
 export function ClassView() {
   return (
@@ -59,16 +60,27 @@ function ClassViewInner() {
 
   const list = data?.students ?? [];
   const submitted = list.filter((r) => r.submitted).length;
-  const blockedN = list.filter((r) => r.blockedCount > 0).length;
+  const checkN = list.filter((r) => r.flags.length > 0).length;
+  const ungradedN = list.filter((r) => r.submitted && !gradeDone(r.grade)).length;
   const shown = list.filter((r) =>
-    filter === "all" ? true : filter === "submitted" ? r.submitted : filter === "writing" ? !r.submitted : r.blockedCount > 0,
+    filter === "all"
+      ? true
+      : filter === "check"
+        ? r.flags.length > 0
+        : filter === "submitted"
+          ? r.submitted
+          : filter === "writing"
+            ? !r.submitted
+            : r.submitted && !gradeDone(r.grade),
   );
   const tabs: [Filter, string][] = [
     ["all", `전체 ${list.length}`],
+    ["check", `먼저 확인 ${checkN}`],
+    ["ungraded", `채점 남음 ${ungradedN}`],
     ["submitted", `제출 ${submitted}`],
     ["writing", `작성 중 ${list.length - submitted}`],
-    ["blocked", `차단 있음 ${blockedN}`],
   ];
+  const checkList = list.filter((r) => r.flags.length > 0);
 
   return (
     <TeacherShell>
@@ -99,6 +111,31 @@ function ClassViewInner() {
       </div>
       {error && <ErrorBox>{error}</ErrorBox>}
       {data && data.students.length > 0 && <ClassSummary data={data} />}
+      {data && checkList.length > 0 && (
+        <section aria-label="먼저 확인할 학생" className={`${card} flex flex-col gap-3 p-6 max-sm:p-4`}>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="m-0 font-display text-xl font-normal">먼저 확인할 학생 {checkList.length}명</h2>
+            <span className="text-[12px] text-muted">판정이 아니라 먼저 볼 구간이에요. 나머지 학생은 평소처럼 채점하면 돼요.</span>
+          </div>
+          <ul className="m-0 grid list-none grid-cols-2 gap-2 p-0 max-md:grid-cols-1">
+            {checkList.map((r) => (
+              <li key={r.attemptId}>
+                <Link href={`/teacher/${encodeURIComponent(r.attemptId)}`} className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-paper px-4 py-3 text-ink no-underline hover:border-nut">
+                  <b className="text-[15px]">{r.name}</b>
+                  <span className="text-[12px] text-muted">{r.studentId}</span>
+                  <span className="flex flex-1 flex-wrap justify-end gap-1">
+                    {r.flags.map((f) => (
+                      <span key={f.code} className="rounded-full bg-alert-bg px-2 py-0.5 text-[12px] font-bold text-alert">
+                        {f.label}
+                      </span>
+                    ))}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <section aria-label="학생 목록" className={`${card} flex flex-col gap-4 p-6 max-sm:p-4`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div role="tablist" className="flex flex-wrap gap-1.5">
@@ -115,9 +152,16 @@ function ClassViewInner() {
               </button>
             ))}
           </div>
-          <button type="button" onClick={() => void load()} className="min-h-[38px] cursor-pointer rounded-full border border-line-3 bg-white px-3.5 text-[13px] text-sub">
-            새로고침
-          </button>
+          <div className="flex gap-1.5">
+            {examId && (
+              <a href={api.classCsvUrl(classId, examId)} download className="inline-flex min-h-[38px] items-center rounded-full border-0 bg-ink px-3.5 text-[13px] font-bold text-white no-underline">
+                채점표 내려받기 (CSV)
+              </a>
+            )}
+            <button type="button" onClick={() => void load()} className="min-h-[38px] cursor-pointer rounded-full border border-line-3 bg-white px-3.5 text-[13px] text-sub">
+              새로고침
+            </button>
+          </div>
         </div>
         {data === null ? (
           <Loading />
@@ -135,6 +179,7 @@ function ClassViewInner() {
                   <th className="px-3 py-2.5 font-medium">상태</th>
                   <th className="px-3 py-2.5 font-medium">도토리 (사용 / 목표)</th>
                   <th className="px-3 py-2.5 font-medium">차단</th>
+                  <th className="px-3 py-2.5 font-medium">채점</th>
                   <th className="px-3 py-2.5" />
                 </tr>
               </thead>
@@ -159,6 +204,16 @@ function ClassViewInner() {
                         <span className="text-muted"> / {r.totalPlanned}</span>
                       </td>
                       <td className={`px-3 py-3 ${r.blockedCount > 0 ? "font-bold text-alert" : "text-muted"}`}>{r.blockedCount}</td>
+                      <td className="px-3 py-3">
+                        {gradeDone(r.grade) ? (
+                          <span className="text-[13px] font-bold text-leaf">{r.grade!.items.join(" · ")}</span>
+                        ) : r.grade ? (
+                          <span className="text-[13px] text-brown">채점 중</span>
+                        ) : (
+                          <span className="text-[13px] text-faint">—</span>
+                        )}
+                        {r.flags.length > 0 && <span className="ml-1.5 inline-block h-2 w-2 rounded-full bg-del align-middle" title={r.flags.map((f) => f.label).join(", ")} />}
+                      </td>
                       <td className="px-3 py-3 text-right">
                         <Link href={href} className="text-brown">
                           보기 →

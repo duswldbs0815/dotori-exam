@@ -3,7 +3,7 @@ import { after } from "next/server";
 import { MAX, checkLength } from "@/lib/limits";
 import { fail, handle, nowIso, readJson } from "@/lib/http";
 import { judgeSentencePaths } from "@/lib/judge";
-import { isValidId, updateAttempt } from "@/lib/store";
+import { isValidId, updateAttempt, withDraft } from "@/lib/store";
 import type { Reflection, SubmitRequest, SubmitResponse } from "@/lib/types";
 
 export const POST = handle(async (req: Request) => {
@@ -26,10 +26,8 @@ export const POST = handle(async (req: Request) => {
     const at = nowIso();
     return {
       rec: {
-        ...rec,
+        ...withDraft(rec, body.final, at),
         final: body.final,
-        draft: body.final,
-        draftSavedAt: at,
         reflection: body.reflection.map((s) => s.trim()) as Reflection,
         submittedAt: at,
       },
