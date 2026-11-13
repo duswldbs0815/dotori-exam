@@ -23,7 +23,8 @@ npm run dev
 - AI 호출: `src/lib/llm.ts` (BAZE API Gateway). 연결 확인은 `GET /api/health/llm`
 - 공용 타입: `src/lib/types.ts`
 - 시험 설정 (도토리 안전 상한 등): `src/lib/exam-config.ts`
-- 저장: 시연은 로컬 실행 + JSON 파일. 웹 배포 시 Supabase로 교체 (`supabase/schema.sql`은 확장용 초안)
+- 저장: 시연은 로컬 실행 + JSON 파일 (`data/attempts/<학생ID>.json`, git 제외). 저장 코드는 `src/lib/store.ts` 한 곳이라 웹 배포 시 Supabase로 교체 가능 (`supabase/schema.sql`은 확장용 초안)
+- AI 답변·차단·분류: `src/lib/tutor.ts` / 교사 리포트(전후 비교, 작성 경로, 반 집계): `src/lib/report.ts`
 
 ## API
 

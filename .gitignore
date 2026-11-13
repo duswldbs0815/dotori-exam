@@ -45,3 +45,6 @@ next-env.d.ts
 
 # Claude Code local settings (contains API key)
 .claude/settings.local.json
+
+# local exam records (JSON storage)
+/data/
