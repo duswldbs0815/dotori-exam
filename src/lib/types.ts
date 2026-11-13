@@ -106,6 +106,10 @@ export type StudentReportResponse = {
   sentences: ReportSentence[];
 };
 
+// 교사 로그인: POST /api/teacher/login, GET /api/teacher/me
+export type TeacherLoginRequest = { code: string };
+export type TeacherMeResponse = { teacher: boolean };
+
 // GET /api/report/class (교사용, P2)
 export type ClassReportResponse = {
   students: {
