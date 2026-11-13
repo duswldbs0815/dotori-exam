@@ -1,38 +1,38 @@
 @import "tailwindcss";
 
-/* 도토리 시험지 색 (와이어프레임 기준) */
+/* 도토리 시험지 색 (11/14 색감 정리: 따뜻한 무채색 바탕 + 도토리 갈색 포인트) */
 @theme inline {
-  --color-cream: #fff7ec;
-  --color-cream-2: #fff1dc;
-  --color-cream-3: #fff6e5;
-  --color-paper: #fffdf9;
-  --color-teacher-bg: #fbf6ef;
-  --color-line: #eadbc8;
-  --color-line-2: #d9c3a5;
-  --color-line-3: #e4d6c4;
-  --color-ink: #3a2a1c;
-  --color-brown: #8a4b12;
-  --color-brown-dark: #5c3a1e;
-  --color-nut: #c27c3e;
-  --color-sub: #6b4f36;
-  --color-muted: #7a6450;
-  --color-faint: #9c8670;
-  --color-disabled: #efe3d2;
-  --color-gold: #e8b04b;
-  --color-leaf-bg: #f4f8ef;
-  --color-leaf: #2f5523;
-  --color-leaf-2: #4a6b3c;
-  --color-alert-bg: #fbe4e4;
+  --color-cream: #faf9f6;
+  --color-cream-2: #f3f1ec;
+  --color-cream-3: #f5f3ef;
+  --color-paper: #ffffff;
+  --color-teacher-bg: #faf9f6;
+  --color-line: #ebe8e2;
+  --color-line-2: #dcd7cf;
+  --color-line-3: #e6e2db;
+  --color-ink: #1b1813;
+  --color-brown: #7b4a1e;
+  --color-brown-dark: #1b1813;
+  --color-nut: #b0743a;
+  --color-sub: #5b554d;
+  --color-muted: #8a847b;
+  --color-faint: #b0aaa1;
+  --color-disabled: #eeebe5;
+  --color-gold: #d9a441;
+  --color-leaf-bg: #f1f4ee;
+  --color-leaf: #2f4a26;
+  --color-leaf-2: #4f6e43;
+  --color-alert-bg: #f9ecea;
   --color-alert: #8e2b2b;
-  --color-del-bg: #fbe4e4;
-  --color-del: #b23b3b;
-  --color-add-bg: #e3f3e6;
-  --color-add: #2f7d4a;
-  --color-path-self: #f1eadf;
-  --color-path-rev-bg: #e4eefb;
-  --color-path-rev: #2f6db5;
-  --color-path-ai-bg: #fff0c7;
-  --color-path-ai: #8a5a00;
+  --color-del-bg: #f9e3e1;
+  --color-del: #a83a34;
+  --color-add-bg: #e5f1e7;
+  --color-add: #2d6e43;
+  --color-path-self: #f1efea;
+  --color-path-rev-bg: #e8eef7;
+  --color-path-rev: #2d5f9e;
+  --color-path-ai-bg: #fbf0d3;
+  --color-path-ai: #7c5300;
   --font-sans: var(--font-noto-kr), "Apple SD Gothic Neo", sans-serif;
   --font-display: var(--font-jua), var(--font-noto-kr), sans-serif;
 }
@@ -161,4 +161,70 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ── 다람쥐: 살아 있는 느낌 (숨쉬기·꼬리·귀·코) + 도토리 먹을 때 3D 볼빵빵 ── */
+@keyframes sq-breathe {
+  0%, 100% { transform: scale3d(1, 1, 1); }
+  45% { transform: scale3d(1.012, 1.022, 1); }
+}
+@keyframes sq-tail-sway {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(4deg); }
+}
+@keyframes sq-tail-tip {
+  0%, 100% { transform: rotate(4deg); }
+  50% { transform: rotate(-6deg); }
+}
+@keyframes sq-ear-flick {
+  0%, 84%, 100% { transform: rotate(0deg); }
+  87% { transform: rotate(-16deg); }
+  90% { transform: rotate(2deg); }
+  92% { transform: rotate(-9deg); }
+  95% { transform: rotate(0deg); }
+}
+@keyframes sq-nose {
+  0%, 10%, 100% { transform: scale3d(1, 1, 1); }
+  3% { transform: scale3d(1.18, 0.9, 1); }
+  6% { transform: scale3d(0.94, 1.08, 1); }
+}
+@keyframes sq-cheek {
+  0% { transform: scale3d(1, 1, 1); }
+  9% { transform: scale3d(1.5, 1.32, 1); }
+  14% { transform: scale3d(1.34, 1.48, 1); }
+  19% { transform: scale3d(1.46, 1.36, 1); }
+  24% { transform: scale3d(1.4, 1.42, 1); }
+  32% { transform: scale3d(1.46, 1.3, 1); }
+  38% { transform: scale3d(1.36, 1.44, 1); }
+  46% { transform: scale3d(1.44, 1.3, 1); }
+  52% { transform: scale3d(1.34, 1.42, 1); }
+  60% { transform: scale3d(1.38, 1.28, 1); }
+  66% { transform: scale3d(1.28, 1.36, 1); }
+  76% { transform: scale3d(0.9, 1.06, 1); }
+  84% { transform: scale3d(1.07, 0.96, 1); }
+  92% { transform: scale3d(0.98, 1.02, 1); }
+  100% { transform: scale3d(1, 1, 1); }
+}
+@keyframes sq-cheek-shine {
+  0%, 100% { opacity: 0; }
+  10%, 66% { opacity: 0.9; }
+}
+@keyframes sq-chew {
+  0%, 24%, 70%, 100% { transform: translate3d(0, 0, 0); }
+  32%, 46%, 60% { transform: translate3d(0, 0.7px, 0) scale3d(1.012, 0.988, 1); }
+  38%, 52%, 66% { transform: translate3d(0, -0.5px, 0) scale3d(0.992, 1.01, 1); }
+  76% { transform: translate3d(0, 1.2px, 0) scale3d(1.02, 0.97, 1); }
+}
+.sq-breathe { transform-box: view-box; transform-origin: 58px 114px; animation: sq-breathe 3.6s ease-in-out infinite; }
+.sq-tail-sway { transform-box: view-box; transform-origin: 74px 104px; animation: sq-tail-sway 3.4s ease-in-out infinite; }
+.sq-tail-tip { transform-box: view-box; transform-origin: 104px 64px; animation: sq-tail-tip 3.4s ease-in-out .35s infinite; }
+.sq-ear-l { transform-box: view-box; transform-origin: 32px 32px; animation: sq-ear-flick 6.2s ease-out 1.4s infinite; }
+.sq-ear-r { transform-box: view-box; transform-origin: 84px 32px; animation: sq-ear-flick 7.8s ease-out 4.1s infinite reverse; }
+.sq-nose { transform-box: fill-box; transform-origin: 50% 50%; animation: sq-nose 4.2s ease-out 2s infinite; }
+.sq-cheek { transform-box: fill-box; transform-origin: 50% 40%; }
+.sq-eating .sq-cheek { animation: sq-cheek 2.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.sq-eating .sq-cheek-shine { animation: sq-cheek-shine 2.4s ease both; }
+.sq-eating .sq-chew { transform-box: view-box; transform-origin: 58px 100px; animation: sq-chew 2.4s ease-in-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .sq-breathe, .sq-tail-sway, .sq-tail-tip, .sq-ear-l, .sq-ear-r, .sq-nose { animation: none; }
 }

@@ -179,16 +179,6 @@ function Nav() {
 
 /* ── 1. 첫 화면: 마우스를 따라 움직이는 도토리 + 다람쥐 ── */
 
-const FLOAT: { x: number; y: number; s: number; d: number; depth: number; r: number }[] = [
-  { x: 2, y: 4, s: 30, d: 0, depth: 26, r: -18 },
-  { x: 3, y: 84, s: 22, d: 0.8, depth: 14, r: 22 },
-  { x: 52, y: 2, s: 18, d: 1.6, depth: 10, r: 8 },
-  { x: 93, y: 6, s: 28, d: 0.4, depth: 22, r: 30 },
-  { x: 95, y: 60, s: 38, d: 1.2, depth: 34, r: -12 },
-  { x: 74, y: 94, s: 20, d: 2, depth: 12, r: 16 },
-  { x: 30, y: 96, s: 24, d: 2.4, depth: 18, r: -26 },
-];
-
 function Hero() {
   const area = useRef<HTMLElement>(null);
   const [eats, setEats] = useState(0);
@@ -202,24 +192,6 @@ function Hero() {
 
   return (
     <section ref={area} onPointerMove={move} className="relative isolate px-6 pt-16 pb-24 max-sm:px-4 max-sm:pt-10 max-sm:pb-16" style={{ ["--mx" as string]: 0, ["--my" as string]: 0 }}>
-      {FLOAT.map((a, i) => (
-        <div
-          key={i}
-          aria-hidden="true"
-          className="pointer-events-none absolute -z-10 opacity-70 max-sm:opacity-40"
-          style={{
-            left: `${a.x}%`,
-            top: `${a.y}%`,
-            transform: `translate(calc(var(--mx) * ${-a.depth}px), calc(var(--my) * ${-a.depth}px))`,
-            transition: "transform .4s cubic-bezier(.2,.8,.2,1)",
-          }}
-        >
-          <div style={{ animation: `land-float ${5 + (i % 3)}s ease-in-out ${a.d}s infinite`, rotate: `${a.r}deg` }}>
-            <Acorn size={a.s} />
-          </div>
-        </div>
-      ))}
-
       <div className="mx-auto grid max-w-[1180px] grid-cols-[1.25fr_1fr] items-center gap-10 max-md:grid-cols-1">
         <div className="flex flex-col gap-6">
           <Reveal>
@@ -257,13 +229,6 @@ function Hero() {
         <Reveal delay={200} className="flex justify-center">
           <div className="relative grid aspect-square w-[min(380px,80vw)] place-items-center">
             <div className="absolute inset-0 rounded-full bg-cream-2" style={{ animation: "land-breathe 6s ease-in-out infinite" }} />
-            <div className="absolute inset-[12%] rounded-full border-2 border-dashed border-line-2" style={{ animation: "land-spin 40s linear infinite" }}>
-              {[0, 90, 180, 270].map((deg) => (
-                <div key={deg} className="absolute top-1/2 left-1/2" style={{ transform: `rotate(${deg}deg) translateY(calc(-1 * min(133px, 28vw))) rotate(-${deg}deg)`, marginLeft: -11, marginTop: -13 }}>
-                  <Acorn size={22} />
-                </div>
-              ))}
-            </div>
             {/* Squirrel 자체가 버튼이라 바깥은 div (누르면 폴짝 + 도토리 냠) */}
             <div
               onClick={() => setEats((n) => n + 1)}
@@ -685,9 +650,6 @@ function Enter() {
                 href={c.href}
                 className={`group relative flex min-h-[240px] flex-col justify-between gap-6 overflow-hidden rounded-[28px] p-8 no-underline transition duration-300 hover:-translate-y-1.5 max-sm:p-6 ${c.dark ? "bg-ink text-white hover:shadow-[0_24px_50px_-24px_rgba(58,42,28,.8)]" : "border border-line bg-white text-ink hover:shadow-[0_24px_50px_-24px_rgba(138,75,18,.5)]"}`}
               >
-                <span aria-hidden="true" className="absolute -right-6 -bottom-8 transition duration-500 group-hover:-translate-y-3 group-hover:rotate-12">
-                  <Acorn size={120} style={{ opacity: c.dark ? 0.18 : 0.12 }} />
-                </span>
                 <div className="flex flex-col gap-2">
                   <span className={`text-[14px] font-bold ${c.dark ? "text-[#F6D7B3]" : "text-brown"}`}>{c.who}</span>
                   <span className="font-display text-[32px] leading-tight">{c.title}</span>
