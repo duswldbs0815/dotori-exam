@@ -7,7 +7,9 @@ import { classLabel, CLASS_IDS } from "@/lib/school";
 import { listAttempts, totalUsed } from "@/lib/store";
 
 const cell = (v: unknown) => {
-  const s = v === null || v === undefined ? "" : String(v);
+  let s = v === null || v === undefined ? "" : String(v);
+  // 엑셀 수식 주입 막기: 학생이 이름을 "=HYPERLINK(…)"처럼 넣어도 수식으로 실행되지 않게 글자로 바꿈
+  if (typeof v === "string" && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
