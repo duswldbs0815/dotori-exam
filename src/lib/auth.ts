@@ -1,8 +1,13 @@
 // 서버 전용: 교사 코드 로그인 (해커톤용 간이 인증)
 // 실제 도입 시에는 슈퍼스쿨 계정 로그인으로 바꿉니다.
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { fail } from "./http";
+
+/** https로 들어온 요청이면 쿠키에 Secure 표시. (시연 때 http://192.168.x.x 로 접속해도 로그인되게) */
+async function isHttps(): Promise<boolean> {
+  return (await headers()).get("x-forwarded-proto")?.split(",")[0]?.trim() === "https";
+}
 
 export const TEACHER_COOKIE = "dotori_teacher";
 const MAX_AGE = 60 * 60 * 12; // 12시간
@@ -44,7 +49,7 @@ export async function setTeacherCookie() {
   (await cookies()).set(TEACHER_COOKIE, token(), {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: await isHttps(),
     path: "/",
     maxAge: MAX_AGE,
   });
@@ -85,7 +90,7 @@ export async function setStudentCookie(attemptId: string, key: string) {
   (await cookies()).set(STUDENT_COOKIE, `${attemptId}.${key}`, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: await isHttps(),
     path: "/",
     maxAge: STUDENT_MAX_AGE,
   });
