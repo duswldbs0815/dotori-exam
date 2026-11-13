@@ -4,7 +4,7 @@ import { heuristicPaths, pathCandidates } from "./report";
 import { loadAttempt, updateAttempt } from "./store";
 import type { ReportSentence, SentencePath } from "./types";
 
-const JUDGE_SYSTEM = `너는 중학생 비평문의 문장마다, 그 문장이 직전에 학생이 받은 AI 답의 내용을 반영한 것인지 판단한다.
+const JUDGE_SYSTEM = `너는 중학생 감상문의 문장마다, 그 문장이 직전에 학생이 받은 AI 답의 내용을 반영한 것인지 판단한다.
 각 문장에 대해 하나를 고른다:
 - "ai": AI 답의 문장을 거의 그대로 옮겼다
 - "revised": AI 답에서 얻은 내용(관점, 근거, 시어 풀이, 지적받은 점 등)을 학생이 자기 말로 바꿔 반영했다

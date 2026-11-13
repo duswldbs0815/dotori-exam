@@ -13,7 +13,7 @@
 | `POST /api/exam/start` | 응시 시작, 본인 확인 기록 (`verified`) | P0 | 🔄 `/api` 접두어. "첫 글 저장"은 하지 않음 |
 | `POST /api/outline` | 개요 4항목 + **항목별 도토리 목표** 저장 | P0 | 🔄 도토리 목표 추가. 첫 질문 이후 목표는 잠김 |
 | `POST /api/draft` | 글 저장 (**10초마다** + 제출 직전) | P0 | 🔄 호출 주기 확정 |
-| `POST /api/ask` | 질문 처리 (아래 순서) | P0 | 🔄 차단을 두 겹으로 판별, 답변 길이 제한 없음 |
+| `POST /api/ask` | 질문 처리 (아래 순서) | P0 | 🔄 차단을 두 겹으로 판별, 답변 최대 세 문장 |
 | `GET /api/attempt/:attemptId` | 학생 화면 상태 복원, 항목별 목표·사용 수 | P0 | 🆕 PDF에 없던 API |
 | `POST /api/submit` | 최종 글과 성찰지 제출 (제출 후 질문·저장 막힘) | P0 | 같음 |
 | `GET /api/report/:studentId` | 교사용 학생 리포트 (메모, 전후 비교, 작성 경로) | P0 | 같음 |
@@ -22,7 +22,7 @@
 공통 규칙 (API.md 기준):
 
 - 요청·응답은 JSON. 실패하면 HTTP 4xx/5xx와 `{ "error": "사람이 읽을 메시지" }`
-- 시험은 하나로 고정: 「진달래꽃」 비평문 쓰기 (`src/lib/exam-config.ts`)
+- 시험은 하나로 고정: 「진달래꽃」 감상문 쓰기 (`src/lib/exam-config.ts`)
 - `attemptId`는 학생 ID와 같음 (예: `S07`)
 - 🔄 학생 API(`outline`·`draft`·`ask`·`attempt`·`submit`)는 `exam/start`가 준 학생 열쇠 쿠키가 있어야 함. 없으면 403 (자세한 내용은 `API.md`)
 - **학생 화면 응답에는 분류(stage, type), 작성 경로, 전후 비교를 넣지 않는다.** 교사 리포트 API에서만 내려간다.

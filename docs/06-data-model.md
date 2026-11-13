@@ -71,7 +71,7 @@ PDF 원문입니다. **지금 구조와 다릅니다** (`exam.maxAnswerSentences
 
 ```json
 {
-  "exam": { "title": "「진달래꽃」 비평문 쓰기", "maxAnswerSentences": 3 },
+  "exam": { "title": "「진달래꽃」 감상문 쓰기", "maxAnswerSentences": 3 },
   "student": { "id": "S07", "name": "가상학생07" },
   "outline": ["이별을 대하는 화자의 태도", "'즈려밟고'의 뜻", "반어로 읽는 근거", "내 평가와 결론"],
   "questions": [

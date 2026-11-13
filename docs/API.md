@@ -5,11 +5,11 @@
 - 주소는 모두 `/api/...` (Next.js API Route)
 - 요청·응답은 JSON
 - 실패하면 HTTP 4xx/5xx와 `{ "error": "사람이 읽을 메시지" }`
-- 시험은 하나로 고정: 「진달래꽃」 비평문 쓰기
+- 시험은 하나로 고정: 「진달래꽃」 감상문 쓰기
 - **도토리 개수는 시험이 정하지 않습니다.** 학생이 ① 개요 단계에서 항목마다 "이 활동에 몇 개 쓸지" **목표치**를 스스로 정하고, ③ 성찰지에서 목표와 실제 사용을 비교합니다.
 - 목표치는 한도가 아닙니다. **넘겨도 그대로 계속 질문할 수 있고**, 추가 경고 창도 띄우지 않습니다. 화면에는 `사용 3 / 목표 2`처럼 숫자만 보여 주고, 넘긴 사실은 기록(`overPlan`)만 해서 성찰과 리포트에 씁니다.
 - AI 답변 길이는 제한하지 않습니다. 대신 써 달라는 요청만 차단합니다.
-- 안전 상한(`acornPlanMaxPerItem`, `acornSafetyCap`)은 `src/lib/exam-config.ts`에서 바꿉니다. 프론트는 숫자를 직접 쓰지 말고 `exam/start` 응답의 `exam` 값을 씁니다.
+- 🔄 도토리는 **상한·잔액이 없습니다** (교사팀 자료, 11/13). `acornPlanMaxPerItem`(99, 입력 오류 방지)과 `acornSafetyCap`(100, 장난 방지)은 화면에 보여 주지 않는 안전장치이고 `src/lib/exam-config.ts`에서 바꿉니다. 프론트는 숫자를 직접 쓰지 말고 `exam/start` 응답의 `exam` 값을 씁니다.
 - **학생 화면 응답에는 분류(stage, type), 작성 경로, 전후 비교를 넣지 않습니다.** 교사 리포트 API에서만 내려갑니다.
 
 ## 전체 흐름
@@ -51,10 +51,11 @@
 {
   "attemptId": "S07",
   "exam": {
-    "title": "「진달래꽃」 비평문 쓰기",
+    "title": "김소월 「진달래꽃」 감상문 쓰기",
     "outlineItems": ["주제·배경지식", "문법·어휘", "해석과 근거", "비평과 고쳐쓰기"],
-    "acornPlanMaxPerItem": 10,
-    "acornSafetyCap": 30
+    "reflectionQuestions": ["계획한 도토리 사용과 실제 사용은 어떻게 달랐나요? …", "가장 도움이 되었던 AI 질문은 …", "AI의 답변을 받은 뒤 내 글은 …", "다음 수행평가에서는 …"],
+    "acornPlanMaxPerItem": 99,
+    "acornSafetyCap": 100
   }
 }
 ```
@@ -70,7 +71,7 @@
   "acornPlan": [1, 1, 2, 2]
 }
 ```
-- `acornPlan[i]`: 개요 i+1번 항목에 쓰겠다고 계획한 도토리 수 (0 이상, `acornPlanMaxPerItem` 이하)
+- `acornPlan[i]`: 개요 i+1번 항목에 쓰겠다고 계획한 도토리 수 (예상 질문 횟수. 0 이상, `acornPlanMaxPerItem` 이하. 상한이 아니라 화면에 "최대 N개"로 보여 주지 않음)
 
 응답
 ```json
@@ -200,7 +201,7 @@
 ```json
 {
   "student": { "id": "S07", "name": "가상학생07" },
-  "exam": { "title": "「진달래꽃」 비평문 쓰기", "outlineItems": ["…", "…", "…", "…"], "acornPlanMaxPerItem": 10, "acornSafetyCap": 30 },
+  "exam": { "title": "김소월 「진달래꽃」 감상문 쓰기", "outlineItems": ["…", "…", "…", "…"], "reflectionQuestions": ["…"], "acornPlanMaxPerItem": 99, "acornSafetyCap": 100 },
   "outline": ["…", "…", "…", "…"],
   "final": "제출한 글",
   "reflection": ["…", "…", "…", "…"],

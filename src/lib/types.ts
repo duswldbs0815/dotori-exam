@@ -17,9 +17,11 @@ export type PerItem = [number, number, number, number];
 export type ExamInfo = {
   title: string;
   outlineItems: readonly string[];
-  /** 개요 항목 하나에 계획할 수 있는 최대 도토리 (안전 상한) */
+  /** 성찰지 4문항 (화면에 그대로 띄움) */
+  reflectionQuestions: readonly string[];
+  /** 예상 질문 횟수 입력칸의 최대값 (입력 오류 방지용, 화면에 상한으로 표시하지 않음) */
   acornPlanMaxPerItem: number;
-  /** 시험 전체에서 쓸 수 있는 최대 질문 수 (안전 상한, 학생에게 안 보임) */
+  /** 장난 방지용 안전장치 (학생에게 안 보임) */
   acornSafetyCap: number;
 };
 
