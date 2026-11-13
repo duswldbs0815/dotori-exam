@@ -1,26 +1,111 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* 도토리 시험지 색 (와이어프레임 기준) */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-cream: #fff7ec;
+  --color-cream-2: #fff1dc;
+  --color-cream-3: #fff6e5;
+  --color-paper: #fffdf9;
+  --color-teacher-bg: #fbf6ef;
+  --color-line: #eadbc8;
+  --color-line-2: #d9c3a5;
+  --color-line-3: #e4d6c4;
+  --color-ink: #3a2a1c;
+  --color-brown: #8a4b12;
+  --color-brown-dark: #5c3a1e;
+  --color-nut: #c27c3e;
+  --color-sub: #6b4f36;
+  --color-muted: #7a6450;
+  --color-faint: #9c8670;
+  --color-disabled: #efe3d2;
+  --color-gold: #e8b04b;
+  --color-leaf-bg: #f4f8ef;
+  --color-leaf: #2f5523;
+  --color-leaf-2: #4a6b3c;
+  --color-alert-bg: #fbe4e4;
+  --color-alert: #8e2b2b;
+  --color-del-bg: #fbe4e4;
+  --color-del: #b23b3b;
+  --color-add-bg: #e3f3e6;
+  --color-add: #2f7d4a;
+  --color-path-self: #f1eadf;
+  --color-path-rev-bg: #e4eefb;
+  --color-path-rev: #2f6db5;
+  --color-path-ai-bg: #fff0c7;
+  --color-path-ai: #8a5a00;
+  --font-sans: var(--font-noto-kr), "Apple SD Gothic Neo", sans-serif;
+  --font-display: var(--font-jua), var(--font-noto-kr), sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+@keyframes dotori-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+@keyframes dotori-wobble {
+  0%,
+  100% {
+    transform: rotate(-8deg);
+  }
+  50% {
+    transform: rotate(8deg);
+  }
+}
+@keyframes dotori-fall {
+  0% {
+    transform: translateY(-60px) rotate(0deg);
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(40px) rotate(320deg);
+    opacity: 0;
+  }
+}
+@keyframes dotori-grow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@keyframes dotori-scan {
+  0%,
+  100% {
+    top: 18%;
+  }
+  50% {
+    top: 78%;
+  }
+}
+@keyframes dotori-fill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
