@@ -9,6 +9,7 @@ import type { ClassReportResponse, SchoolOverviewResponse } from "@/lib/types";
 import { BackLink, card, ErrorBox, Loading } from "../ui";
 import { gradeDone } from "@/lib/grading";
 import { TeacherGate, TeacherShell } from "./TeacherShell";
+import { ClassInsights } from "./ClassInsights";
 
 type Row = ClassReportResponse["students"][number];
 type Filter = "all" | "check" | "submitted" | "writing" | "ungraded";
@@ -111,6 +112,7 @@ function ClassViewInner() {
       </div>
       {error && <ErrorBox>{error}</ErrorBox>}
       {data && data.students.length > 0 && <ClassSummary data={data} />}
+      {data && data.students.length > 0 && examId && <ClassInsights classId={classId} examId={examId} />}
       {data && checkList.length > 0 && (
         <section aria-label="먼저 확인할 학생" className={`${card} flex flex-col gap-3 p-6 max-sm:p-4`}>
           <div className="flex flex-wrap items-baseline justify-between gap-2">

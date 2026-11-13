@@ -277,6 +277,33 @@
   - `ai`: AI 답과 70% 이상 같음 (AI 답변 활용)
   - 판정 방식: ① 1차(즉시): AI 답에서 처음 나온 내용과 겹치는지 글자 비교 ② 2차(제출 직후 뒤에서): AI가 문장마다 판정해 저장. 2차 결과가 저장되기 전(제출 직후 몇 초)에는 1차 결과가 내려갑니다.
 
+## GET /api/report/class/insights (교사, 🆕 수업 단서)
+`?classId=2-1&examId=kor2` — 한 반·한 수행평가의 학생 질문을 AI가 3~5개 묶음으로 정리하고, 다음 수업 제안을 붙입니다.
+- 학생 이름·학번은 AI에 보내지 않습니다 (질문 글, 개요 항목, 분류만).
+- `students`·`questions`(몇 명·몇 개)는 AI가 아니라 서버가 직접 셉니다.
+- 처음 한 번은 15~20초 걸리고, 같은 질문 묶음이면 30분 동안 저장된 결과를 바로 돌려줍니다 (새 질문이 생기면 다시 만듦).
+- 질문이 3개 미만이면 `source: "none"`, AI 연결 실패면 `source: "error"` (화면은 카드를 숨기거나 안내 문구).
+
+응답
+```json
+{
+  "cards": [
+    {
+      "title": "옛말 어휘 뜻을 확인하는 질문",
+      "detail": "'역겨워', '즈려밟고'처럼 지금과 쓰임이 다른 말의 뜻을 몰라 시의 분위기를 잡기 어려워해요.",
+      "suggestion": "시의 옛말 표현을 칠판에 적고 짝과 '지금 말로 바꾸면?'을 한 줄씩 적어 보게 해요.",
+      "students": 20, "questions": 25, "item": "문법·어휘",
+      "examples": ["여기서 '고이'는 무슨 뜻이에요?"],
+      "blocked": false
+    }
+  ],
+  "basedOn": { "students": 25, "questions": 146, "blocked": 10 },
+  "generatedAt": "2026-11-14T00:00:00.000Z",
+  "source": "ai"
+}
+```
+화면: `src/components/teacher/ClassInsights.tsx` (반 화면 `ClassView.tsx`에 한 줄로 들어감. 빼려면 그 한 줄만 지우면 됨)
+
 ## GET /api/report/class (교사, 🔄 P1)
 반 전체 집계입니다. 교사 로그인 필요. 🔄 `?classId=2-3&examId=kor2`로 한 반·한 수행평가만 볼 수 있고, 그때 응답에 `exam`(항목 이름·권장 도토리)이 들어가며 `students[].attemptId`로 학생 리포트를 엽니다.
 

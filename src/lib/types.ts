@@ -256,3 +256,30 @@ export type MyAttempt = {
 export type MyPageResponse = { student: { id: string; name: string }; attempts: MyAttempt[] };
 // POST /api/me/login
 export type MeLoginRequest = { studentId: string; name: string };
+
+// GET /api/report/class/insights : 반 전체 "수업 단서" (AI가 질문을 묶고 다음 수업 제안)
+export type InsightCard = {
+  /** 한 줄 제목 (예: "'즈려밟고' 같은 옛말 시어 뜻을 물었어요") */
+  title: string;
+  /** 이 질문들이 보여 주는 것 */
+  detail: string;
+  /** 다음 수업 제안 */
+  suggestion: string;
+  /** 이 묶음에 해당하는 학생 수 / 질문 수 (서버가 셈) */
+  students: number;
+  questions: number;
+  /** 개요 항목 (가장 많이 나온 것) */
+  item: string | null;
+  /** 실제 질문 예시 1~2개 */
+  examples: string[];
+  /** 대신 써 달라는 요청 묶음인지 */
+  blocked: boolean;
+};
+
+export type ClassInsightsResponse = {
+  cards: InsightCard[];
+  basedOn: { students: number; questions: number; blocked: number };
+  generatedAt: string;
+  /** ai: AI가 정리 / none: 질문이 너무 적어서 정리하지 않음 / error: AI 연결 실패 */
+  source: "ai" | "none" | "error";
+};
