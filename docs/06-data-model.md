@@ -1,10 +1,72 @@
 # 06. 데이터 구조
 
-> 한 줄 요약: 학생 1명의 응시 기록(시험·학생·개요·질문 목록·최종 글·성찰지)을 하나의 JSON으로 저장하며, 아래는 PDF 원문과 필드별 설명입니다. (PDF 6장)
+> 한 줄 요약: 학생 1명의 응시 기록을 JSON 파일 하나(`data/attempts/<학생ID>.json`)로 저장하며, 실제 구조의 기준은 `src/lib/store.ts`의 `AttemptRecord`입니다. PDF 6장 JSON은 변경 전 기록으로 남깁니다. (PDF 6장 + 팀 결정 반영)
 >
-> 관련 문서: [05-api](./05-api.md) · [03-teacher-report](./03-teacher-report.md) · [07-llm-prompts](./07-llm-prompts.md) · [08-tech-stack](./08-tech-stack.md)
+> 관련 문서: [05-api](./05-api.md) · [API.md](./API.md) · [03-teacher-report](./03-teacher-report.md) · [07-llm-prompts](./07-llm-prompts.md)
 
-## JSON 원문
+> **기준은 코드입니다.** 저장 구조는 `src/lib/store.ts`, API 타입은 `src/lib/types.ts`.
+
+## 저장 방식
+
+| 항목 | 내용 |
+|---|---|
+| 위치 | `data/attempts/<학생ID>.json` (git에서 제외: `.gitignore`의 `/data/`) |
+| 단위 | 학생(응시) 1명당 파일 1개. `attemptId` = 학생 ID |
+| 동시 저장 | 학생마다 쓰기 대기열로 순서대로 저장 |
+| 교체 | 웹 배포 시 `store.ts`의 load/save/list만 바꾸면 Supabase로 교체 가능 (`supabase/schema.sql`은 확장용 초안) |
+
+## AttemptRecord (응시 기록 전체)
+
+| 필드 | 타입 | 의미 | 언제 채워지는지 |
+|---|---|---|---|
+| `attemptId` | string | 응시 ID (= 학생 ID) | `POST /api/exam/start` |
+| `student` | `{ id, name }` | 가상 학생 | `POST /api/exam/start` |
+| `verified` | boolean | 본인 확인(모의) 여부 | `POST /api/exam/start` |
+| `startedAt` | string (ISO) | 시작 시각 | `POST /api/exam/start` |
+| `outline` | string[4] \| null | 개요 4항목에 학생이 쓴 내용 | `POST /api/outline` |
+| `acornPlan` | number[4] \| null | 🔄 개요 항목별 도토리 **목표** (0~10) | `POST /api/outline` (첫 질문 이후 잠김) |
+| `draft` | string | 마지막으로 저장된 글 | `POST /api/draft` (10초마다), `POST /api/ask` |
+| `draftSavedAt` | string (ISO) \| null | 글 저장 시각 | 위와 같음 |
+| `questions` | QuestionRecord[] | 질문 기록 | `POST /api/ask`마다 1건 추가 |
+| `final` | string \| null | 제출한 글 | `POST /api/submit` |
+| `reflection` | string[4] \| null | 성찰 질문 ①~④ 답 | `POST /api/submit` |
+| `submittedAt` | string (ISO) \| null | 제출 시각 | `POST /api/submit` |
+
+개요 항목 이름(주제·배경지식 / 문법·어휘 / 해석과 근거 / 비평과 고쳐쓰기)은 기록에 넣지 않고 `exam-config.ts`의 `outlineItems`에 고정되어 있다.
+
+## QuestionRecord (질문 1건)
+
+| 필드 | 타입 | 의미 | 비고 |
+|---|---|---|---|
+| `acornNo` | number \| null | 몇 번째 도토리인지 | 차단이면 `null` |
+| `time` | string (ISO) | 질문 시각 | 🔄 PDF는 `"22:10"` 형식 |
+| `outlineItem` | 1~4 | 어느 개요 항목에 대한 질문인지 | 학생이 선택 |
+| `selectedText` | string | 드래그한 글 | 드래그 없이 질문하면 `""` |
+| `selection` | `{ start, end }` \| null | 🆕 선택 위치 (텍스트 시작·끝) | PDF 8장 반영 |
+| `question` | string | 학생 질문 | |
+| `answer` | string | AI 답, 차단이면 되묻기 문구 | `[BLOCKED]` 표식은 저장하지 않음 |
+| `blocked` | boolean | 대신 작성 요청으로 차단되었는지 | |
+| `charged` | boolean | 🆕 도토리를 썼는지 | `!blocked` |
+| `overPlan` | boolean | 🆕 이 질문으로 그 항목이 목표를 넘겼는지 | 기록만, 질문은 막지 않음 |
+| `stage` | string \| null | 쓰기 단계 | 분류 실패 시 `null` |
+| `type` | string \| null | 질문 방식 | 분류 실패 시 `null` |
+| `before` | string | 질문 직전 글 전체 | |
+
+`after`(질문 직후 글)는 **저장하지 않는다.** 리포트를 만들 때 "다음 질문의 `before`, 마지막 질문이면 제출한 글"로 계산한다. 분류의 `reason`도 저장하지 않는다.
+
+## 계산해서 만드는 값 (저장하지 않음)
+
+| 값 | 계산 방법 | 쓰는 곳 |
+|---|---|---|
+| 항목별 사용 수 `acornsUsed` | `charged`인 질문을 `outlineItem`별로 셈 | 학생 화면, 성찰지 그래프, 리포트 |
+| `after` | 다음 질문 `before` 또는 `final` | 교사 리포트 전후 비교 |
+| `diff` | `before` ↔ `after`를 diff-match-patch로 비교 (`same`/`add`/`del`) | 교사 리포트 |
+| `sentences[].path` | 문장 유사도 판정 (`self`/`revised`/`ai`) | 교사 리포트 |
+| `blockedCount` | `blocked`인 질문 수 | 교사 리포트, 반 전체 |
+
+## PDF 6장 JSON (변경 전 기록)
+
+PDF 원문입니다. **지금 구조와 다릅니다** (`exam.maxAnswerSentences` 삭제, `after` 미저장, `acornPlan`·`selection`·`charged`·`overPlan` 추가 등). 기록용으로만 남깁니다.
 
 ```json
 {
@@ -24,52 +86,3 @@
   "final": "제출한 글", "reflection": ["…", "…", "…", "…"]
 }
 ```
-
-- 저장: JSON 파일 (시연용, 8장)
-
-## 필드 설명
-
-"언제 채워지는지"는 5장 API 설명에서 도출했습니다. PDF에 명시되지 않은 부분은 TBD입니다.
-
-### 최상위
-
-| 필드 | 타입 | 의미 | 언제 채워지는지 |
-|---|---|---|---|
-| `exam` | object | 시험 정보 | TBD(확인 필요) — 시험 생성 기능/API는 PDF에 없음 |
-| `exam.title` | string | 시험 제목 | 위와 같음 |
-| `exam.maxAnswerSentences` | number | AI 답 최대 문장 수 (3) | 위와 같음 |
-| `student` | object | 응시 학생 (가상 학생) | `POST /exam/start` (추정, TBD) |
-| `student.id` | string | 학생 ID (예: `S07`) | 위와 같음 |
-| `student.name` | string | 학생 이름 (예: `가상학생07`) | 위와 같음 |
-| `outline` | string[4] | 개요 4항목에 학생이 쓴 내용 (순서대로 ①~④) | `POST /outline` |
-| `questions` | object[] | 질문 기록 목록 | `POST /ask` 때마다 1건 추가 |
-| `final` | string | 제출한 최종 글 | `POST /submit` |
-| `reflection` | string[4] | 성찰 질문 ①~④에 대한 답 | `POST /submit` |
-
-### `questions[]` 항목
-
-| 필드 | 타입 | 의미 | 언제 채워지는지 |
-|---|---|---|---|
-| `acornNo` | number | 도토리 번호 (몇 번째 도토리인지) | `/ask` 도토리 차감 시. 차단된 질문의 값: TBD |
-| `time` | string (`"HH:MM"`) | 질문 시각 | `/ask` (날짜·시간대 포함 여부 TBD) |
-| `outlineItem` | number (1~4) | 질문이 어느 개요 항목에 대한 것인지 | `/ask` (학생이 질문 시 선택) |
-| `selectedText` | string | 학생이 드래그해 선택한 글 | `/ask` |
-| `question` | string | 학생 질문 | `/ask` |
-| `answer` | string | AI 답 (차단 시 되묻기 문구) | `/ask` 답변 생성 |
-| `blocked` | boolean | 대신 작성 요청으로 차단되었는지 | `/ask` 차단 판별 |
-| `stage` | string | 쓰기 단계 (계획하기 / 내용 생성 / 내용 조직 / 표현하기 / 고쳐쓰기) | `/ask` 분류 (P1) |
-| `type` | string | 질문 방식 (사실 확인 요청 / 생각 확장 요청 / 글 점검 요청 / 대신 작성 요청) | `/ask` 분류 (P1) |
-| `before` | string | 질문 직전 글 전체 | `/ask` 직전 글 저장 |
-| `after` | string | 질문 직후 글 전체 | 다음 `/ask` 또는 `/submit` 때, 마지막 `/draft` 글로 채움 |
-
-## PDF 다른 장에는 있지만 JSON에 필드가 없는 값
-
-| 값 | 근거 | 상태 |
-|---|---|---|
-| 선택 위치 (텍스트 시작·끝 위치) | 8장 | 필드명 TBD(확인 필요) |
-| 분류 이유 `reason` | 7장 ② 출력 | 저장 여부·위치 TBD(확인 필요) |
-| 본인 확인 기록 | 5장 `/exam/start` | 필드명 TBD(확인 필요) |
-| 첫 글 / 글 스냅숏 (`/draft`) | 2장·5장 | 저장 형태 TBD(확인 필요) |
-| 남은 도토리 수 / 총개수 | 3·4장, 11장 | 상한 미정, 필드명 TBD(확인 필요) |
-| 문장별 작성 경로 | 3장, 7장 ③ | 필드명 TBD(확인 필요) |
-| 개요 4항목의 고정 이름 (주제·배경지식 등) | 3장 | JSON에는 학생 작성 내용만 있음 — 항목 이름 저장 여부 TBD |
