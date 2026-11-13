@@ -15,7 +15,7 @@
 | AI | 대회 제공 LLM API | BAZE API Gateway, OpenAI 호환 `/chat/completions` (`src/lib/llm.ts`). 환경 변수 `LLM_API_URL`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_MODEL_FAST` |
 | 전후 비교 | diff 라이브러리 (예: diff-match-patch) | diff-match-patch (`src/lib/report.ts`) |
 | 작성 경로 | AI 답과 유사도 | 글자 2개 단위 유사도, 70% 이상이면 "AI 답변 활용" |
-| 저장 | JSON 파일 (시연용) | `data/attempts/<학생ID>.json` (git 제외). `supabase/schema.sql`은 확장용 초안 |
+| 저장 | JSON 파일 (시연용) | 🔄 배포: Supabase `attempts` 표 (`supabase/attempts.sql`) / 로컬: `data/attempts/<학생ID>.json`. 환경 변수로 자동 선택 |
 | 디자인 시안 | 캔버스 「도토리 시험지 · 학생 화면」, 「전체 틀」 참고 | 시안 위치/링크 TBD(확인 필요) |
 
 ## 개발 메모

@@ -23,9 +23,24 @@ npm run dev
 - AI 호출: `src/lib/llm.ts` (BAZE API Gateway). 연결 확인은 `GET /api/health/llm`
 - 공용 타입: `src/lib/types.ts`
 - 시험 설정 (도토리 안전 상한 등): `src/lib/exam-config.ts`
-- 저장: 시연은 로컬 실행 + JSON 파일 (`data/attempts/<학생ID>.json`, git 제외). 저장 코드는 `src/lib/store.ts` 한 곳이라 웹 배포 시 Supabase로 교체 가능 (`supabase/schema.sql`은 확장용 초안)
+- 저장: `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`가 있으면 **Supabase**, 없으면 **JSON 파일**(`data/attempts/<학생ID>.json`, git 제외). 코드는 `src/lib/store.ts`, 확인은 `GET /api/health/storage`
 - 시연용 가상 학생 만들기: `npm run seed:demo` → `S01`~`S03` (교사팀이 만든 가상 데이터 `scripts/demo-data/teacher-demo-students.json`). A: 계획 3·허용 2 / B: 계획 4·허용 11 / C: 계획 5·허용 6·대신 써 달라는 요청 차단 2
 - AI 답변·차단·분류: `src/lib/tutor.ts` / 교사 리포트(전후 비교, 작성 경로, 반 집계): `src/lib/report.ts`
+
+## 배포 (Vercel + Supabase)
+
+Vercel 같은 서버리스에서는 파일 저장이 유지되지 않으므로 **Supabase가 꼭 필요합니다.**
+
+1. supabase.com에서 프로젝트 만들기 (무료)
+2. SQL Editor에 `supabase/attempts.sql` 내용을 붙여 넣고 Run → `attempts` 표 생성
+3. Project Settings > API에서 Project URL과 `service_role` 키 복사
+4. Vercel 프로젝트 > Settings > Environment Variables에 아래 값 넣기
+   - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+   - `LLM_PROVIDER`, `LLM_API_URL`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_MODEL_FAST`, `TEACHER_CODE`
+5. 배포 후 `https://<주소>/api/health/storage` → `{"ok":true,"storage":"supabase"}` 확인
+6. 시연 학생 넣기: 내 컴퓨터 `.env.local`에도 Supabase 두 값을 넣고 `npm run seed:demo` (Supabase에 S01~S03이 들어감)
+
+주의: 교사 코드 잠금(5번 틀리면 5분)과 "질문 한 번에 하나"는 서버 메모리에 두므로, 서버가 여러 대로 나뉘는 배포 환경에서는 서버마다 따로 셉니다. 시연 규모에서는 문제없습니다.
 
 ## API
 

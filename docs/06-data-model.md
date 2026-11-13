@@ -10,10 +10,10 @@
 
 | 항목 | 내용 |
 |---|---|
-| 위치 | `data/attempts/<학생ID>.json` (git에서 제외: `.gitignore`의 `/data/`) |
-| 단위 | 학생(응시) 1명당 파일 1개. `attemptId` = 학생 ID |
-| 동시 저장 | 학생마다 쓰기 대기열로 순서대로 저장 |
-| 교체 | 웹 배포 시 `store.ts`의 load/save/list만 바꾸면 Supabase로 교체 가능 (`supabase/schema.sql`은 확장용 초안) |
+| 위치 | 🔄 배포: **Supabase** `attempts` 표 (`supabase/attempts.sql`, 학생 1명 = 한 줄, 기록 전체를 `data` jsonb에 저장) / 로컬: `data/attempts/<학생ID>.json` (git 제외). `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` 유무로 자동 선택 |
+| 단위 | 학생(응시) 1명당 1개. `attemptId` = 학생 ID |
+| 동시 저장 | 한 서버 안에서는 학생마다 순서대로 저장. 🔄 서버가 여러 대면 Supabase `version` 번호를 비교해서, 그사이 다른 요청이 고쳤으면 다시 읽고 다시 저장 (최대 5번) |
+| 보안 | Supabase 표는 RLS를 켜고 정책을 두지 않음 → 서버의 service_role 키로만 읽고 씀 (브라우저에서 직접 못 읽음) |
 
 ## AttemptRecord (응시 기록 전체)
 
