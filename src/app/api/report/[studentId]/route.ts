@@ -5,7 +5,7 @@ import { forgetInsights } from "@/lib/insights";
 import { DEFAULT_CLASS_ID, DEFAULT_EXAM_ID } from "@/lib/school";
 import { judgeSentencePaths } from "@/lib/judge";
 import { examOf } from "@/lib/exams";
-import { buildStudentReport } from "@/lib/report";
+import { buildStudentReport, judgedFor } from "@/lib/report";
 import { deleteAttempts, isValidId, loadAttempt } from "@/lib/store";
 
 // 교사용 학생 리포트 (분류, 전후 비교, 작성 경로 포함)
@@ -19,7 +19,7 @@ export const GET = handle(async (_req: Request, ctx: RouteContext<"/api/report/[
   requireSubject(teacher, exam); // 다른 과목 학생 기록은 없는 것처럼
 
   // 제출했는데 AI 판정이 아직 없으면 (예: 시연 데이터) 뒤에서 판정해 두고, 이번엔 1차 판정으로 응답
-  if (rec.final && !(rec.sentencePaths && rec.sentencePathsFor === rec.final)) {
+  if (rec.final && !judgedFor(rec, rec.final)) {
     after(() => judgeSentencePaths(studentId));
   }
   return Response.json(buildStudentReport(rec, exam));

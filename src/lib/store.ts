@@ -80,6 +80,8 @@ export type AttemptRecord = {
   sentencePaths?: ReportSentence[] | null;
   /** 위 판정을 어떤 글로 했는지 (글이 바뀌면 다시 판정) */
   sentencePathsFor?: string | null;
+  /** 위 판정을 어떤 규칙 버전으로 했는지 (report.ts JUDGE_VERSION) */
+  sentencePathsV?: number;
 };
 
 const DATA_DIR = path.join(process.cwd(), "data", "attempts");

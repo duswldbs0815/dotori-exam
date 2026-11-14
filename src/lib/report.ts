@@ -40,8 +40,10 @@ const norm = (s: string) => s.replace(/[\s"'“”‘’.,!?。…·「」『』
 
 /** 글자 2개씩 묶어 비교하는 유사도 (0~1) */
 export function similarity(a: string, b: string): number {
-  const x = norm(a);
-  const y = norm(b);
+  return simNorm(norm(a), norm(b));
+}
+
+function simNorm(x: string, y: string): number {
   if (!x || !y) return 0;
   if (x === y) return 1;
   const grams = (s: string) => {
@@ -56,6 +58,30 @@ export function similarity(a: string, b: string): number {
   const total = Math.max(1, x.length - 1) + Math.max(1, y.length - 1);
   return (2 * hit) / total;
 }
+
+/**
+ * 🔄 지문(시·자료) 인용은 비교에서 뺌: 학생도 AI도 같은 시 구절을 인용하면 비슷해 보이는 오판을 막음.
+ * 정규화한 글에서 지문에 그대로 있는 5글자 이상 구간을 지움. 학생이 AI 답의 "설명"을 옮긴 건 그대로 잡힘.
+ */
+const QUOTE_MIN = 5;
+function stripPassage(n: string, passageNorm: string): string {
+  if (!passageNorm) return n;
+  let out = "";
+  let i = 0;
+  while (i < n.length) {
+    let len = 0;
+    if (i + QUOTE_MIN <= n.length && passageNorm.includes(n.slice(i, i + QUOTE_MIN))) {
+      len = QUOTE_MIN;
+      while (i + len < n.length && passageNorm.includes(n.slice(i, i + len + 1))) len++;
+    }
+    if (len) i += len;
+    else out += n[i++];
+  }
+  return out;
+}
+
+/** 지문을 빼고 나서 남은 글이 이보다 짧으면 "거의 인용뿐"이라 AI 답 활용으로 보지 않음 */
+const MIN_OWN_CHARS = 4;
 
 /** 질문 뒤 문장이 AI 답의 "새 내용"과 이 정도 이상 겹치면 답을 반영한 것으로 봄 (글자 2개 묶음 개수) */
 const NEW_CONTENT_OVERLAP = 3;
@@ -79,8 +105,10 @@ export type PathCandidate = {
 };
 
 /** 제출한 글을 문장으로 나누고, 각 문장이 처음 생긴 시점과 1차 판정 근거를 계산 */
-export function pathCandidates(rec: AttemptRecord, final: string): PathCandidate[] {
+export function pathCandidates(rec: AttemptRecord, final: string, passage?: string): PathCandidate[] {
   const charged = rec.questions.filter((q) => q.charged);
+  const pn = passage ? norm(passage) : "";
+  const passageGrams = passage ? bigrams(passage) : new Set<string>();
   const snapshots = charged.map((q) => norm(q.before)); // 각 질문 직전 글
   return splitSentences(final).map((text) => {
     const n = norm(text);
@@ -90,9 +118,14 @@ export function pathCandidates(rec: AttemptRecord, final: string): PathCandidate
     if (firstIdx === 0) return { text, question: null, nearCopy: false, overlapsNewContent: false };
 
     const q = charged[firstIdx - 1]; // 이 문장이 생기기 직전 질문
-    const best = Math.max(0, ...splitSentences(q.answer).map((a) => similarity(text, a)), similarity(text, q.answer));
-    // AI 답에서 "처음 나온" 내용: 질문 직전 글에는 없던 글자 묶음만 셈 (원래 쓰던 말은 제외)
-    const known = bigrams(q.before);
+    // 지문 인용을 뺀 나머지끼리 비교
+    const own = stripPassage(n, pn);
+    const best =
+      own.length < MIN_OWN_CHARS
+        ? 0
+        : Math.max(0, ...[...splitSentences(q.answer), q.answer].map((a) => simNorm(own, stripPassage(norm(a), pn))));
+    // AI 답에서 "처음 나온" 내용: 질문 직전 글과 지문에 없던 글자 묶음만 셈 (원래 쓰던 말·시 구절은 제외)
+    const known = new Set([...bigrams(q.before), ...passageGrams]);
     const fresh = [...bigrams(q.answer)].filter((g) => !known.has(g));
     const mine = bigrams(text);
     const overlap = fresh.filter((g) => mine.has(g)).length;
@@ -121,10 +154,17 @@ export function heuristicPaths(cands: PathCandidate[]): ReportSentence[] {
   });
 }
 
+/** AI 2차 판정 규칙 버전. 바뀌면 예전에 저장한 판정은 다시 함 (2: 지문 인용 제외) */
+export const JUDGE_VERSION = 2;
+
+/** 이 글에 대해 지금 규칙으로 AI 판정을 마쳤는지 */
+export const judgedFor = (rec: AttemptRecord, final: string) =>
+  !!rec.sentencePaths && rec.sentencePathsFor === final && rec.sentencePathsV === JUDGE_VERSION;
+
 /** 제출 때 AI가 판정해 저장한 결과가 있으면 그걸, 없으면 1차 판정을 씀 */
-function sentencePaths(rec: AttemptRecord, final: string): ReportSentence[] {
-  if (rec.sentencePaths && rec.sentencePathsFor === final) return rec.sentencePaths;
-  return heuristicPaths(pathCandidates(rec, final));
+function sentencePaths(rec: AttemptRecord, final: string, passage?: string): ReportSentence[] {
+  if (judgedFor(rec, final)) return rec.sentencePaths!;
+  return heuristicPaths(pathCandidates(rec, final, passage));
 }
 
 /** 한 번 저장에 이만큼 넘게 생기면 "한꺼번에 들어온 글"로 표시 (판정이 아니라 확인할 구간 표시) */
@@ -182,7 +222,7 @@ export function buildTimelapse(rec: AttemptRecord, final: string): Timelapse {
 export const recommendedTotal = (exam: Pick<ExamDef, "itemGuides">) => exam.itemGuides.reduce((a, g) => a + (g.acorns || 0), 0);
 
 /** 🔄 11/14 학생은 계획을 세우지 않으므로, "많이 물음"은 선생님 권장 질문 수와 비교 (예전 기록도 같은 기준) */
-export function checkFlags(rec: AttemptRecord, exam?: Pick<ExamDef, "itemGuides">): CheckFlag[] {
+export function checkFlags(rec: AttemptRecord, exam?: Pick<ExamDef, "itemGuides"> & Partial<Pick<ExamDef, "passage">>): CheckFlag[] {
   const flags: CheckFlag[] = [];
   const final = rec.final ?? rec.draft;
   const pastes = (rec.draftLog?.length ? buildTimelapse(rec, final).edits : []).filter((e) => e.paste).length;
@@ -193,7 +233,7 @@ export function checkFlags(rec: AttemptRecord, exam?: Pick<ExamDef, "itemGuides"
   const used = totalUsed(rec);
   if (exam && used - recommended >= 4) flags.push({ code: "over", label: `권장보다 질문 ${used - recommended}개 많음` });
   if (final) {
-    const ai = sentencePaths(rec, final).filter((s) => s.path === "ai").length;
+    const ai = sentencePaths(rec, final, exam?.passage?.body).filter((s) => s.path === "ai").length;
     if (ai >= 2) flags.push({ code: "ai", label: `AI 답과 비슷한 문장 ${ai}개` });
   }
   return flags;
@@ -240,7 +280,7 @@ export function buildStudentReport(rec: AttemptRecord, examDef: ExamDef): Studen
     },
     blockedCount: rec.questions.filter((q) => q.blocked).length,
     questions,
-    sentences: final ? sentencePaths(rec, final) : [],
+    sentences: final ? sentencePaths(rec, final, examDef.passage?.body) : [],
     timelapse: buildTimelapse(rec, final),
     grade: rec.grade ?? null,
     grading: {

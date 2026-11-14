@@ -1,6 +1,7 @@
 // 서버 전용: 제출된 글의 문장별 작성 경로를 AI로 판정해서 저장 (2차 판정)
 import { callLLMJson } from "./llm";
-import { heuristicPaths, pathCandidates } from "./report";
+import { examOf } from "./exams";
+import { heuristicPaths, JUDGE_VERSION, judgedFor, pathCandidates } from "./report";
 import { loadAttempt, updateAttempt } from "./store";
 import type { ReportSentence, SentencePath } from "./types";
 
@@ -9,6 +10,7 @@ const JUDGE_SYSTEM = `너는 중학생 감상문의 문장마다, 그 문장이 
 - "ai": AI 답의 문장을 거의 그대로 옮겼다
 - "revised": AI 답에서 얻은 내용(관점, 근거, 시어 풀이, 지적받은 점 등)을 학생이 자기 말로 바꿔 반영했다
 - "self": AI 답과 관계없이 학생이 스스로 쓴 문장이다 (원래 생각을 이어 쓴 문장, 일반적인 감상, 연결 문장 등)
+시(지문) 구절을 그대로 인용한 부분은 학생도 원래 쓸 수 있으니, 같은 구절을 인용했다는 이유만으로 "ai"를 고르지 않는다.
 판단이 애매하면 "self"를 고른다. 이 판단은 교사가 참고할 단서일 뿐이다.
 JSON {"results": [{"i": 번호, "path": "ai|revised|self"}]} 로만 답한다.`;
 
@@ -17,9 +19,10 @@ export async function judgeSentencePaths(attemptId: string): Promise<void> {
   const rec = await loadAttempt(attemptId);
   if (!rec || !rec.final) return;
   const final = rec.final;
-  if (rec.sentencePaths && rec.sentencePathsFor === final) return; // 이미 판정함
+  if (judgedFor(rec, final)) return; // 지금 규칙으로 이미 판정함
 
-  const cands = pathCandidates(rec, final);
+  const passage = (await examOf(rec)).passage?.body;
+  const cands = pathCandidates(rec, final, passage);
   const base = heuristicPaths(cands);
 
   // AI에게 물을 문장: 질문 뒤에 생겼고, 거의 그대로 옮긴 게 확실하지 않은 문장
@@ -60,6 +63,6 @@ export async function judgeSentencePaths(attemptId: string): Promise<void> {
 
   await updateAttempt(attemptId, (cur) => {
     if (!cur || cur.final !== final) return { rec: null, result: null }; // 그사이 바뀌었으면 버림
-    return { rec: { ...cur, sentencePaths: paths, sentencePathsFor: final }, result: null };
+    return { rec: { ...cur, sentencePaths: paths, sentencePathsFor: final, sentencePathsV: JUDGE_VERSION }, result: null };
   });
 }
