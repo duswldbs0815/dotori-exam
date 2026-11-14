@@ -148,7 +148,7 @@ export async function suggestExam(input: {
             .join("\n"),
         },
       ],
-      { model: "main", maxTokens: 4000 },
+      { model: "deep", maxTokens: 4000 },
     );
     // JSON이 깨져 오는 경우가 가끔 있어 한 번 더 물어봄
     const out = await ask().catch((e) => {

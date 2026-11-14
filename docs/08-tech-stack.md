@@ -12,7 +12,7 @@
 |---|---|---|
 | 화면 | 웹 (React 또는 HTML+JS). 글 선택 위치는 텍스트의 시작·끝 위치로 저장 | Next.js 16 + React 19 + Tailwind 4. 선택 위치는 `selection: { start, end }` |
 | 서버 | Node 또는 Python (FastAPI) | Next.js API Route (Node) `src/app/api/**` |
-| AI | 대회 제공 LLM API | BAZE API Gateway, OpenAI 호환 `/chat/completions` (`src/lib/llm.ts`). 환경 변수 `LLM_API_URL`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_MODEL_FAST` |
+| AI | 대회 제공 LLM API | BAZE API Gateway, OpenAI 호환 `/chat/completions` (`src/lib/llm.ts`). 환경 변수 `LLM_API_URL`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_MODEL_FAST`, 🔄 `LLM_MODEL_DEEP`. 업무별 모델: fast(Haiku) 질문 분류·작성 경로 / main(Sonnet) 학생 답변·수업 단서 / deep(Opus) 수행평가 기준 설계·AI 1차 채점 (`src/lib/llm.ts` 표) |
 | 전후 비교 | diff 라이브러리 (예: diff-match-patch) | diff-match-patch (`src/lib/report.ts`) |
 | 작성 경로 | AI 답과 유사도 | 글자 2개 단위 유사도, 70% 이상이면 "AI 답변 활용" |
 | 저장 | JSON 파일 (시연용) | 🔄 배포: Supabase `dotori_attempts`·`dotori_exams` 표 (`supabase/schema.sql`) / 로컬: `data/attempts/<학생ID>.json`. 환경 변수로 자동 선택 |

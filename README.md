@@ -27,7 +27,7 @@ cp .env.example .env.local   # 키 채우기 (커밋 금지)
 npm run dev
 ```
 
-- AI 호출: `src/lib/llm.ts` (BAZE API Gateway, OpenAI 호환 `/chat/completions`). `.env.local`에 `LLM_API_URL=https://api.baze.co/v1/gateway`, `LLM_API_KEY`(BAZE 대시보드 > API Gateway), `LLM_MODEL`(예: `claude-sonnet-5-5`), `LLM_MODEL_FAST`(예: `claude-haiku-5-5`). 연결 확인은 `GET /api/health/llm`. 키가 없으면 수행평가 제안은 과목별 예시로 대신함
+- AI 호출: `src/lib/llm.ts` (BAZE API Gateway, OpenAI 호환 `/chat/completions`). `.env.local`에 `LLM_API_URL=https://api.baze.co/v1/gateway`, `LLM_API_KEY`(BAZE 대시보드 > API Gateway), `LLM_MODEL`(예: `claude-sonnet-5-5`), `LLM_MODEL_FAST`(예: `claude-haiku-5-5`), 🔄 `LLM_MODEL_DEEP`(예: `claude-opus-5-5`, 수행평가 설계·AI 1차 채점. 없으면 `LLM_MODEL`). 연결 확인은 `GET /api/health/llm`. 키가 없으면 수행평가 제안은 과목별 예시로 대신함
 - 공용 타입: `src/lib/types.ts`
 - 시험 설정 (도토리 안전 상한 등): `src/lib/exam-config.ts`
 - 저장: `SUPABASE_URL`과 `SUPABASE_SERVICE_ROLE_KEY`가 있으면 Supabase(`dotori_attempts`, `dotori_exams` 표, `src/lib/db.ts`), 없으면 로컬 JSON 파일(`data/attempts/`, `data/exams/`, git 제외). 표 만들기는 `supabase/schema.sql`. 어디에 저장 중인지 확인: `GET /api/health/storage` → `"storage":"supabase"`
@@ -43,7 +43,7 @@ Vercel 같은 서버리스에서는 파일 저장이 유지되지 않으므로 *
 
 1. Supabase 프로젝트를 만들고 SQL Editor에서 `supabase/schema.sql` 실행 → `dotori_attempts`, `dotori_exams` 표
 2. Project Settings > API Keys에서 Project URL과 secret 키(`sb_secret_…`) 복사
-3. Vercel 환경 변수: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `LLM_API_URL`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_MODEL_FAST`, `TEACHER_CODE`
+3. Vercel 환경 변수: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `LLM_API_URL`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_MODEL_FAST`, `LLM_MODEL_DEEP`, `TEACHER_CODE`
 4. 가상 데이터 넣기: 로컬 `.env.local`에도 Supabase 두 값을 넣고 `npm run seed:demo` (S01~S03), `npm run seed:school && npm run push:supabase` (학교 전체)
 5. 배포: `npm run deploy` (git 정보 없이 올림. git 연결 배포는 Hobby 요금제에서 커밋 작성자가 팀원이 아니면 BLOCKED로 멈춤)
 6. 확인: `https://<주소>/api/health/storage` → `{"ok":true,"storage":"supabase"}`

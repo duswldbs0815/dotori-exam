@@ -68,12 +68,17 @@ function ClassViewInner() {
     if (!todo.length) return;
     setAiMsg(null);
     let fail = 0;
-    for (let i = 0; i < todo.length; i++) {
+    let stop: string | null = null;
+    for (let i = 0; i < todo.length && !stop; i++) {
       setAiRun({ done: i, total: todo.length });
-      await api.aiGrade(todo[i].attemptId).catch(() => fail++);
+      await api.aiGrade(todo[i].attemptId).catch((e) => {
+        fail++;
+        // 크레딧 소진은 다음 학생도 똑같이 실패하므로 바로 멈춤
+        if (e instanceof ApiError && e.status === 402) stop = e.message;
+      });
     }
     setAiRun(null);
-    setAiMsg(fail ? `${todo.length - fail}명 완료, ${fail}명은 받지 못했어요. 다시 눌러 주세요.` : `${todo.length}명 AI 1차 채점 완료. 학생마다 제안을 확인해 주세요.`);
+    setAiMsg(stop ?? (fail ? `${todo.length - fail}명 완료, ${fail}명은 받지 못했어요. 다시 눌러 주세요.` : `${todo.length}명 AI 1차 채점 완료. 학생마다 제안을 확인해 주세요.`));
     load();
   };
   const acceptAi = async () => {

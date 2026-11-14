@@ -2,6 +2,7 @@ import { aiGradeText, sameGrading } from "@/lib/ai-grade";
 import { requireSubject, requireTeacher } from "@/lib/auth";
 import { examOf } from "@/lib/exams";
 import { fail, handle } from "@/lib/http";
+import { isQuotaError } from "@/lib/llm";
 import { isValidId, loadAttempt, updateAttempt } from "@/lib/store";
 import type { AiGradeResponse } from "@/lib/types";
 
@@ -21,6 +22,7 @@ export const POST = handle(async (_req: Request, ctx: RouteContext<"/api/report/
 
   const aiGrade = await aiGradeText(exam, final).catch((e) => {
     console.error("AI 1차 채점 실패", e);
+    if (isQuotaError(e)) fail(402, "AI 사용 한도(크레딧)를 다 써서 지금은 AI 1차 채점을 할 수 없어요. 직접 채점은 그대로 할 수 있어요.");
     fail(502, "AI 1차 채점을 받지 못했어요. 잠시 뒤 다시 해 주세요.");
   });
   await updateAttempt(studentId, (cur) => {

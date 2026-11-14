@@ -15,7 +15,7 @@
 | ② 질문 분류 | stage / type / reason | 🔄 type마다 뜻을 적어 줌. 분류가 "대신 작성 요청"이면 **차단에도 쓰임** | `LLM_MODEL_FAST` (fast) |
 | ③ 작성 경로 판정 | LLM 지시문 (유사도로 대체 가능) | 🔄 **LLM을 쓰지 않음.** 글자 2개 단위 유사도 70% 이상이면 "AI 답변 활용" (`src/lib/report.ts`) | — |
 
-LLM 연결: BAZE API Gateway의 OpenAI 호환 엔드포인트 (`src/lib/llm.ts`, 환경 변수 `LLM_API_URL`, `LLM_MODEL`, `LLM_MODEL_FAST`). 연결 확인은 `GET /api/health/llm`.
+LLM 연결: BAZE API Gateway의 OpenAI 호환 엔드포인트 (`src/lib/llm.ts`, 환경 변수 `LLM_API_URL`, `LLM_MODEL`, `LLM_MODEL_FAST`, 🔄 `LLM_MODEL_DEEP`). 🔄 11/14 업무별 모델: fast = 질문 분류·작성 경로 판정, main = 학생 답변·반 수업 단서, deep = 수행평가 기준 제안·AI 1차 채점 (`src/lib/llm.ts`). 연결 확인은 `GET /api/health/llm`.
 
 ## ① 답변 + 차단 (`ANSWER_SYSTEM`)
 

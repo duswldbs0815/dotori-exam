@@ -6,9 +6,16 @@ export type ChatMessage = {
   content: string;
 };
 
+/**
+ * 🔄 11/14 업무별 모델. 일의 무게에 맞춰 세 단계로 나눔 (환경 변수로 바꿀 수 있음)
+ * | 단계 | 환경 변수 | 맡는 일 |
+ * | fast | LLM_MODEL_FAST (예: claude-haiku-5-5) | 질문 분류·차단 판단, 작성 경로 판정 — 짧고 자주, 학생을 기다리게 하면 안 됨 |
+ * | main | LLM_MODEL (예: claude-sonnet-5-5) | 학생 질문 답변(실시간), 반 수업 단서 |
+ * | deep | LLM_MODEL_DEEP (예: claude-opus-5-5, 없으면 main) | 수행평가 기준 설계, AI 1차 채점 — 드물지만 정확해야 함 |
+ */
 type CallOptions = {
-  /** "main" = LLM_MODEL (답변·가채점), "fast" = LLM_MODEL_FAST (분류·테스트). 직접 모델명을 줘도 됩니다. */
-  model?: "main" | "fast" | (string & {});
+  /** "fast" | "main" | "deep" (위 표). 직접 모델명을 줘도 됩니다. */
+  model?: "main" | "fast" | "deep" | (string & {});
   maxTokens?: number;
   temperature?: number;
 };
@@ -16,6 +23,7 @@ type CallOptions = {
 function resolveModel(model: CallOptions["model"] = "main"): string {
   if (model === "main") return requireEnv("LLM_MODEL");
   if (model === "fast") return process.env.LLM_MODEL_FAST || requireEnv("LLM_MODEL");
+  if (model === "deep") return process.env.LLM_MODEL_DEEP || requireEnv("LLM_MODEL");
   return model;
 }
 
@@ -26,6 +34,17 @@ function requireEnv(name: string): string {
 }
 
 /** 텍스트 답변 한 번 받기 */
+/** AI 호출 실패. status 402 = 크레딧(이번 달 한도) 소진, 429 = 너무 자주 부름 */
+export class LlmError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+export const isQuotaError = (e: unknown) => e instanceof LlmError && e.status === 402;
+
 export async function callLLM(messages: ChatMessage[], opts: CallOptions = {}): Promise<string> {
   const baseUrl = requireEnv("LLM_API_URL").replace(/\/$/, "");
   const res = await fetch(`${baseUrl}/chat/completions`, {
@@ -44,7 +63,7 @@ export async function callLLM(messages: ChatMessage[], opts: CallOptions = {}): 
 
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
-    throw new Error(`LLM 호출 실패 (HTTP ${res.status}): ${detail.slice(0, 300)}`);
+    throw new LlmError(res.status, `LLM 호출 실패 (HTTP ${res.status}): ${detail.slice(0, 300)}`);
   }
 
   const data = await res.json();

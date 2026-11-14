@@ -51,7 +51,7 @@ export async function aiGradeText(exam: ExamDef, final: string): Promise<AiGrade
       { role: "system", content: SYSTEM },
       { role: "user", content: user },
     ],
-    { model: "main", maxTokens: 1500, temperature: 0 },
+    { model: "deep", maxTokens: 1500, temperature: 0 },
   );
   const got = Array.isArray(out.items) ? out.items : [];
   const vals = exam.outlineItems.map((_, i) => {
