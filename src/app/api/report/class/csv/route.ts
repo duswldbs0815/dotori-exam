@@ -44,7 +44,7 @@ export const GET = handle(async (req: Request) => {
         g?.comment ?? "",
         totalUsed(r),
         r.questions.filter((q) => q.blocked).length,
-        checkFlags(r).map((f) => f.label).join(" / "),
+        checkFlags(r, exam).map((f) => f.label).join(" / "),
       ]
         .map(cell)
         .join(","),

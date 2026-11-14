@@ -61,6 +61,7 @@ function ClassViewInner() {
   };
 
   const list = data?.students ?? [];
+  const recTotal = (data?.exam?.itemGuides ?? []).reduce((a, g) => a + g.acorns, 0) ?? 0; // 선생님 권장 질문 수 합
   const submitted = list.filter((r) => r.submitted).length;
   const checkN = list.filter((r) => r.flags.length > 0).length;
   const ungradedN = list.filter((r) => r.submitted && !gradeDone(r.grade)).length;
@@ -180,7 +181,7 @@ function ClassViewInner() {
                   <th className="px-3 py-2.5 font-medium">학번</th>
                   <th className="px-3 py-2.5 font-medium">이름</th>
                   <th className="px-3 py-2.5 font-medium">상태</th>
-                  <th className="px-3 py-2.5 font-medium">도토리 (사용 / 목표)</th>
+                  <th className="px-3 py-2.5 font-medium">질문 (실제 / 권장)</th>
                   <th className="px-3 py-2.5 font-medium">차단</th>
                   <th className="px-3 py-2.5 font-medium">채점</th>
                   <th className="px-3 py-2.5" />
@@ -204,7 +205,7 @@ function ClassViewInner() {
                       </td>
                       <td className="px-3 py-3">
                         <span className="font-display text-lg text-leaf">{r.totalUsed}</span>
-                        <span className="text-muted"> / {r.totalPlanned}</span>
+                        <span className="text-muted"> / {recTotal}</span>
                       </td>
                       <td className={`px-3 py-3 ${r.blockedCount > 0 ? "font-bold text-alert" : "text-muted"}`}>{r.blockedCount}</td>
                       <td className="px-3 py-3">
@@ -236,7 +237,7 @@ function ClassViewInner() {
   );
 }
 
-/** 반 전체 요약: 숫자 카드 4개 + 항목별 질문(목표 vs 실제) + 질문 방식 분포 */
+/** 반 전체 요약: 숫자 카드 4개 + 항목별 질문(학생당 평균 vs 선생님 권장) + 질문 방식 분포 */
 export function ClassSummary({ data }: { data: ClassReportResponse }) {
   const SHORT_ITEMS = shortLabels(data.exam);
   const n = data.students.length;
@@ -246,7 +247,12 @@ export function ClassSummary({ data }: { data: ClassReportResponse }) {
   const blockedStudents = data.students.filter((s) => s.blockedCount > 0).length;
   const { planned, used } = data.acornsByOutlineItem;
   const itemMax = Math.max(1, ...planned, ...used);
-  const hasPlan = planned.some((v) => v > 0); // 🔄 11/14부터 학생은 계획을 세우지 않음 (예전 기록만 있음)
+  // 🔄 11/14 학생 계획 대신 선생님 권장 질문 수와 비교 (학생당 평균 vs 권장)
+  const rec = (i: number) => data.exam?.itemGuides?.[i]?.acorns ?? 0;
+  const avgOf = (i: number) => (n ? used[i] / n : 0);
+  const avgMax = Math.max(1, ...SHORT_ITEMS.map((_, i) => Math.max(avgOf(i), rec(i))));
+  void planned;
+  void itemMax;
   const busiest = used.indexOf(Math.max(...used));
   const typeTotals = data.matrix.types.map((_, ti) => data.matrix.counts.reduce((a, row) => a + row[ti], 0));
   const typeSum = typeTotals.reduce((a, b) => a + b, 0);
@@ -282,15 +288,15 @@ export function ClassSummary({ data }: { data: ClassReportResponse }) {
             <div key={label} className="flex items-center gap-3 text-sm">
               <span className="w-24 flex-none text-sub">{label}</span>
               <div className="relative h-3.5 flex-1 rounded-full bg-leaf-bg">
-                {hasPlan && <div className="absolute inset-y-0 left-0 rounded-full border-2 border-dashed border-nut" style={{ width: `${(planned[i] / itemMax) * 100}%` }} />}
-                <div className={`absolute inset-y-0.5 left-0 rounded-full ${i === busiest && used[i] > 0 ? "bg-leaf" : "bg-nut"}`} style={{ width: `${(used[i] / itemMax) * 100}%` }} />
+                <div className="absolute inset-y-0 left-0 rounded-full border-2 border-dashed border-nut" style={{ width: `${(rec(i) / avgMax) * 100}%` }} />
+                <div className={`absolute inset-y-0.5 left-0 rounded-full ${i === busiest && used[i] > 0 ? "bg-leaf" : "bg-nut"}`} style={{ width: `${(avgOf(i) / avgMax) * 100}%` }} />
               </div>
-              <span className="w-20 flex-none text-right text-xs text-muted">
-                {hasPlan ? `${used[i]} / 목표 ${planned[i]}` : `${used[i]}번`}
+              <span className="w-28 flex-none text-right text-xs text-muted">
+                평균 {avgOf(i).toFixed(1)} / 권장 {rec(i)}
               </span>
             </div>
           ))}
-          <span className="text-xs text-muted">{hasPlan ? "채운 막대는 실제 질문, 점선은 학생들이 정한 목표의 합이에요. " : ""}수업에서 더 다룰 부분을 찾는 데 써 보세요.</span>
+          <span className="text-xs text-muted">채운 막대는 학생당 평균 질문, 점선은 선생님이 정한 권장 수예요. 수업에서 더 다룰 부분을 찾는 데 써 보세요.</span>
         </div>
         <div className={`${card} flex min-w-0 flex-[1_1_320px] flex-col gap-3 p-6`}>
           <h2 className="m-0 font-display text-xl font-normal">어떤 질문을 했나</h2>
@@ -307,7 +313,7 @@ export function ClassSummary({ data }: { data: ClassReportResponse }) {
               </div>
             ))
           )}
-          <span className="text-xs text-muted">질문 수가 많거나 목표와 다르다고 부적절한 것은 아니에요. 판정이 아닌 수업 단서예요.</span>
+          <span className="text-xs text-muted">질문 수가 많거나 권장과 다르다고 부적절한 것은 아니에요. 판정이 아닌 수업 단서예요.</span>
         </div>
       </div>
     </section>

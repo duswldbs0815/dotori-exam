@@ -157,16 +157,20 @@ export function buildTimelapse(rec: AttemptRecord, final: string): Timelapse {
 }
 
 /** 먼저 확인할 학생 표시. 점수·판정이 아니라 "이 부분을 보세요" */
-export function checkFlags(rec: AttemptRecord): CheckFlag[] {
+/** 선생님이 정한 권장 질문 수 합 (수행평가 만들 때 항목마다 정함) */
+export const recommendedTotal = (exam: Pick<ExamDef, "itemGuides">) => exam.itemGuides.reduce((a, g) => a + (g.acorns || 0), 0);
+
+/** 🔄 11/14 학생은 계획을 세우지 않으므로, "많이 물음"은 선생님 권장 질문 수와 비교 (예전 기록도 같은 기준) */
+export function checkFlags(rec: AttemptRecord, exam?: Pick<ExamDef, "itemGuides">): CheckFlag[] {
   const flags: CheckFlag[] = [];
   const final = rec.final ?? rec.draft;
   const pastes = (rec.draftLog?.length ? buildTimelapse(rec, final).edits : []).filter((e) => e.paste).length;
   if (pastes) flags.push({ code: "paste", label: `한꺼번에 들어온 글 ${pastes}번` });
   const blocked = rec.questions.filter((q) => q.blocked).length;
   if (blocked >= 2) flags.push({ code: "blocked", label: `대신 써 달라는 요청 ${blocked}번` });
-  const plan = rec.acornPlan ? rec.acornPlan.reduce((a, b) => a + b, 0) : 0;
+  const recommended = exam ? recommendedTotal(exam) : 0;
   const used = totalUsed(rec);
-  if (plan > 0 && used - plan >= 4) flags.push({ code: "over", label: `계획보다 질문 ${used - plan}개 많음` });
+  if (exam && used - recommended >= 4) flags.push({ code: "over", label: `권장보다 질문 ${used - recommended}개 많음` });
   if (final) {
     const ai = sentencePaths(rec, final).filter((s) => s.path === "ai").length;
     if (ai >= 2) flags.push({ code: "ai", label: `AI 답과 비슷한 문장 ${ai}개` });
@@ -219,7 +223,7 @@ export function buildStudentReport(rec: AttemptRecord, examDef: ExamDef): Studen
     timelapse: buildTimelapse(rec, final),
     grade: rec.grade ?? null,
     grading: { scale: examDef.grading?.scale ?? DEFAULT_SCALE, max: examDef.grading?.max ?? DEFAULT_MAX },
-    flags: checkFlags(rec),
+    flags: checkFlags(rec, examDef),
   };
 }
 
@@ -251,7 +255,7 @@ export function buildClassReport(recs: AttemptRecord[], examDef?: ExamDef): Clas
       name: r.student.name,
       totalPlanned: r.acornPlan ? r.acornPlan.reduce((a, b) => a + b, 0) : 0,
       totalUsed: totalUsed(r),
-      flags: checkFlags(r),
+      flags: checkFlags(r, examDef),
       grade: r.grade ?? null,
       blockedCount: r.questions.filter((q) => q.blocked).length,
       submitted: r.submittedAt !== null,

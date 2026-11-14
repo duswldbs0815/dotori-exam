@@ -257,11 +257,11 @@ export function TeacherReport() {
           </section>
 
           <section aria-label="항목별 질문" className={`${card} flex flex-col gap-2.5 p-[22px]`}>
-            <h2 className="m-0 font-display text-xl font-normal">{data.acorns.planned ? "도토리 목표와 사용" : "항목별 질문"}</h2>
+            <h2 className="m-0 font-display text-xl font-normal">항목별 질문 (실제 / 권장)</h2>
             {SHORT_ITEMS.map((label, i) => {
-              const p = data.acorns.planned?.[i] ?? 0;
+              const p = data.exam.itemGuides?.[i]?.acorns ?? 0; // 🔄 학생 계획 대신 선생님 권장 수
               const u = data.acorns.used[i];
-              const max = Math.max(1, ...(data.acorns.planned ?? [0]), ...data.acorns.used);
+              const max = Math.max(1, ...(data.exam.itemGuides ?? []).map((g) => g.acorns), ...data.acorns.used);
               return (
                 <div key={label} className="flex items-center gap-3 text-sm">
                   <span className="w-24 flex-none text-sub">{label}</span>
@@ -270,7 +270,7 @@ export function TeacherReport() {
                     <div className={`absolute inset-y-0.5 left-0 rounded-full ${u > p ? "bg-leaf" : "bg-nut"}`} style={{ width: `${(u / max) * 100}%` }} />
                   </div>
                   <span className="w-16 flex-none text-right text-xs text-muted">
-                    {data.acorns.planned ? `${u} / 목표 ${p}` : `${u}번`}
+                    {u} / 권장 {p}
                   </span>
                 </div>
               );
@@ -400,7 +400,7 @@ function SendDialog({ name, exam, onClose }: { name: string; exam: string; onClo
   const [items, setItems] = useState({ report: true, summary: true, comment: false });
   const [phase, setPhase] = useState<"pick" | "sending" | "done">("pick");
   const opts: [keyof typeof items, string, string][] = [
-    ["report", "과정 리포트 (PDF)", "글, 질문 기록, 질문 전후 비교, 도토리 계획과 사용"],
+    ["report", "과정 리포트 (PDF)", "글, 질문 기록, 질문 전후 비교, 항목별 질문 수"],
     ["summary", "평가 요약", "질문 수, 차단 수, 작성 경로 비율"],
     ["comment", "교과 세특 메모 초안", "선생님이 직접 고친 뒤 생기부에 옮겨요"],
   ];

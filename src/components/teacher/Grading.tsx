@@ -102,14 +102,14 @@ export function Grading({ studentId, data, onSeek }: { studentId: string; data: 
   const rowCount = n + (ai !== undefined ? 1 : 0);
 
   const evidence = (qs: ReportQuestion[], i: number | null) => {
-    const planned = i !== null ? data.acorns.planned?.[i] : null;
+    const planned = i !== null ? data.exam.itemGuides?.[i]?.acorns : null; // 🔄 선생님 권장 수
     const used = i !== null ? data.acorns.used[i] : null;
     return (
       <div className="flex flex-wrap items-center gap-1.5 text-[13px] text-muted">
         {i !== null && (
           <span className="mr-1">
             질문 {used}
-            {planned !== null && planned !== undefined ? ` · 목표 ${planned}` : ""}
+            {planned !== null && planned !== undefined ? ` · 권장 ${planned}` : ""}
           </span>
         )}
         {qs.length === 0 && i !== null && <span className="text-faint">AI 없이 작성</span>}
@@ -204,7 +204,7 @@ export function Grading({ studentId, data, onSeek }: { studentId: string; data: 
           <li className="grid grid-cols-[150px_1fr_auto] items-center gap-4 border-t border-line py-3.5 max-md:grid-cols-1 max-md:gap-2">
             <span className="text-[15px] font-bold text-ink">AI 활용</span>
             <span className="text-[13px] text-muted">
-              질문 {data.questions.filter((q) => !q.blocked).length} · 차단 {data.blockedCount} {data.acorns.totalPlanned > 0 ? ` · 계획 ${data.acorns.totalPlanned} → 실제 ${data.acorns.totalUsed}` : ""}
+              질문 {data.questions.filter((q) => !q.blocked).length} · 차단 {data.blockedCount} · 권장 {(data.exam.itemGuides ?? []).reduce((a, g) => a + g.acorns, 0)} → 실제 {data.acorns.totalUsed}
             </span>
             <ValueControl
               v={ai}
