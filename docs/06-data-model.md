@@ -27,7 +27,7 @@
 |---|---|---|---|
 | `attemptId` | string | 응시 ID (= 학생 ID) | `POST /api/exam/start` |
 | `student` | `{ id, name }` | 가상 학생 | `POST /api/exam/start` |
-| `verified` | boolean (선택) | 🔄 예전 기록에만 있음. 페이스페이를 없애서 더 이상 저장하지 않음 | — |
+| `verified` | boolean | 본인 확인(모의) 여부 | `POST /api/exam/start` |
 | `keyHash` | string | 🔄 학생 열쇠의 해시 (열쇠 원본은 저장하지 않음). 다시 시작하면 바뀜 | `POST /api/exam/start` |
 | `startedAt` | string (ISO) | 시작 시각 | `POST /api/exam/start` |
 | `outline` | string[4] \| null | 개요 4항목에 학생이 쓴 내용 | `POST /api/outline` |

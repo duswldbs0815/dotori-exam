@@ -31,7 +31,7 @@
 
 | 단계 | 학생 화면 | 호출 |
 |---|---|---|
-| 시작 | 학번·이름 + 기록 안내 동의 | `POST /api/exam/start` |
+| 시작 | 본인 확인(페이스페이 모의) + 기록 안내 | `POST /api/exam/start` |
 | 🔄 수행평가 탭 | 과제·지문 + 내 글, 10초마다 자동 저장 → 제출 | `POST /api/draft`, `POST /api/submit` (`reflection: ["","","",""]`) |
 | 🔄 AI 질문 탭 | 드래그(선택) → 항목 고르기 → 질문 (확인 창 없음) | `POST /api/ask` |
 | (예전) ① 개요 | 🔄 11/14 학생 화면에서 없앰. API는 예전 기록 호환용으로 남음 | `POST /api/outline` |
@@ -55,10 +55,10 @@
 
 요청
 ```json
-{ "studentId": "30907", "name": "박서윤", "examId": "kor2", "classId": "3-9" }
+{ "studentId": "30907", "name": "박서윤", "verified": true }
 ```
 - `studentId`: 학번 (영문·숫자·`-`·`_` 1~32자). 이 값이 `attemptId`가 됩니다.
-- 🔄 11/14 페이스페이 모의 확인을 없애서 `verified`는 더 이상 받지 않습니다.
+- `verified`: 페이스페이(모의) 본인 확인을 거쳤는지
 
 응답
 ```json
@@ -372,7 +372,7 @@ AI가 자료와 채점기준표를 읽고 개요 4항목, 항목별 `itemGuides`
 타입은 `src/lib/types.ts`의 `MyPageResponse`, `MyAttempt`, `MeLoginRequest`. 학생 로그인은 서명한 쿠키 `dotori_me`(학번·이름)로 기억합니다. `POST /api/exam/start`도 이 쿠키를 함께 심습니다.
 
 ### POST /api/me/login
-`{ studentId, name }`. 그 학번·이름으로 된 응시 기록이 있어야 로그인됩니다 (없으면 404). 🔄 페이스페이 모의 단계는 없앴습니다.
+`{ studentId, name }`. 그 학번·이름으로 된 응시 기록이 있어야 로그인됩니다 (없으면 404). 페이스페이는 화면만 있는 모의 확인.
 
 ### GET /api/me
 로그인한 학생의 응시 목록 (`MyPageResponse`). **학생용 값만** 내려갑니다: 개요, 도토리 계획·사용, 질문·답, 차단 여부, 글자 수, 제출 여부. 교사용 메모·분류·작성 경로는 넣지 않습니다. 로그인 전이면 401.

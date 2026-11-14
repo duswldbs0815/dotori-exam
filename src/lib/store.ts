@@ -57,8 +57,7 @@ export type AttemptRecord = {
   examId?: string;
   /** 학년-반 ("2-3"). 없으면 기본 반 */
   classId?: string;
-  /** (예전 기록 호환용, 더 이상 쓰지 않음) */
-  verified?: boolean;
+  verified: boolean;
   /** 학생 열쇠의 해시 (쿠키에 든 열쇠와 맞아야 조회·저장 가능) */
   keyHash?: string | null;
   startedAt: string;

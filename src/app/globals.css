@@ -82,6 +82,23 @@ body {
     transform: scaleY(1);
   }
 }
+@keyframes dotori-scan {
+  0%,
+  100% {
+    top: 18%;
+  }
+  50% {
+    top: 78%;
+  }
+}
+@keyframes dotori-fill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
 
 /* 랜딩 페이지 */
 @keyframes land-float {

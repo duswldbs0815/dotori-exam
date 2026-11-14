@@ -78,6 +78,7 @@ for (const s of data.students) {
   const rec = {
     attemptId: s.id,
     student: { id: s.id, name: s.name },
+    verified: true,
     keyHash: null, // 시연 데이터는 학생 화면으로 열 일이 없음 (교사 리포트로만 봄)
     startedAt: t(plusMin(first, -8)),
     outline: s.outline,
