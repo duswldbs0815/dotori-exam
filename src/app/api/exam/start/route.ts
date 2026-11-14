@@ -6,7 +6,7 @@ import { fail, handle, nowIso, readJson } from "@/lib/http";
 import { isValidId, updateAttempt } from "@/lib/store";
 import type { StartRequest, StartResponse } from "@/lib/types";
 
-// 본인 확인(학번 + 이름, 페이스페이) 후 이 브라우저에 학생 열쇠 쿠키를 발급
+// 학번 + 이름으로 시작하면 이 브라우저에 학생 열쇠 쿠키를 발급
 export const POST = handle(async (req: Request) => {
   const body = await readJson<StartRequest>(req);
   if (!isValidId(body.studentId)) fail(400, "학번은 영문·숫자·-·_ 1~32자여야 해요.");
@@ -26,7 +26,7 @@ export const POST = handle(async (req: Request) => {
     if (rec) {
       // 같은 학번 + 같은 이름이면 이어서, 이름이 다르면 다른 사람이 들어온 것으로 보고 막음
       if (rec.student.name !== name) fail(409, "학번과 이름이 맞지 않아요. 다시 확인해 주세요.");
-      return { rec: { ...rec, keyHash, verified: rec.verified || Boolean(body.verified) }, result: null };
+      return { rec: { ...rec, keyHash }, result: null };
     }
     if (classId && isClosed(exam, classId)) fail(403, "선생님이 이 반 수행평가를 마감했어요.");
     return {
@@ -35,7 +35,6 @@ export const POST = handle(async (req: Request) => {
         student: { id: body.studentId, name },
         examId: exam.id,
         classId,
-        verified: Boolean(body.verified),
         keyHash,
         startedAt: nowIso(),
         outline: null,

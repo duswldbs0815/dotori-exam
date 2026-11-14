@@ -152,7 +152,6 @@ function makeAttempt({ exam, classId, studentId, name, period }) {
     student: { id: studentId, name },
     examId: exam.id,
     classId,
-    verified: true,
     keyHash: null, // 가상 데이터는 학생 화면으로 열 일이 없음 (교사 리포트로만 봄)
     startedAt: iso(c.day, period),
     outline: pick(c.outlines),
@@ -214,7 +213,6 @@ function makeFromVariant({ exam, classId, studentId, name, period }) {
     student: { id: studentId, name },
     examId: exam.id,
     classId,
-    verified: true,
     keyHash: null,
     startedAt: iso(c.day, period),
     outline: v.outline,

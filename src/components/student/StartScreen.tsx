@@ -6,20 +6,16 @@ import { useEffect, useState } from "react";
 import { api, ApiError, rememberSession } from "@/lib/api-client";
 import { CLASS_IDS, classLabel, DEFAULT_CLASS_ID, SCHOOL_NAME } from "@/lib/school";
 import type { ClassExamsResponse } from "@/lib/types";
-import { Acorn } from "../Acorn";
 import { Squirrel } from "../Squirrel";
 import { Brand, btn, card, ErrorBox, Pill } from "../ui";
 
-type Phase = "intro" | "ready" | "scan" | "fail" | "ok";
 const ID_RE = /^[A-Za-z0-9_-]{1,32}$/;
 
-/** ① 시험 시작 + 페이스페이 본인 확인 모의 화면 */
+/** ① 시험 시작: 학번·이름 + 기록 안내 동의 */
 export function StartScreen() {
   const router = useRouter();
-  const [phase, setPhase] = useState<Phase>("intro");
   const [studentId, setStudentId] = useState("");
   const [name, setName] = useState("");
-  const [fails, setFails] = useState(0);
   const [agreed, setAgreed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +49,7 @@ export function StartScreen() {
     setError(null);
     try {
       const id = studentId.trim();
-      const res = await api.start({ studentId: id, name: name.trim(), verified: true, examId: examId ?? undefined, classId });
+      const res = await api.start({ studentId: id, name: name.trim(), examId: examId ?? undefined, classId });
       rememberSession(res.attemptId, { name: name.trim(), exam: res.exam });
       router.push(`/exam/${encodeURIComponent(res.attemptId)}`);
     } catch (e) {
@@ -75,33 +71,6 @@ export function StartScreen() {
       </div>
     </header>
   );
-
-  if (phase !== "intro") {
-    return (
-      <Shell>
-        {header}
-        <FaceCheck
-          phase={phase}
-          name={name.trim()}
-          fails={fails}
-          agreed={agreed}
-          busy={busy}
-          error={error}
-          onAgree={() => setAgreed((a) => !a)}
-          onBack={() => setPhase("intro")}
-          onScan={() => setPhase("scan")}
-          onResult={(ok) => {
-            if (ok) setPhase("ok");
-            else {
-              setFails((f) => f + 1);
-              setPhase("fail");
-            }
-          }}
-          onStart={start}
-        />
-      </Shell>
-    );
-  }
 
   return (
     <Shell>
@@ -178,7 +147,7 @@ export function StartScreen() {
             className="flex flex-wrap gap-3"
             onSubmit={(e) => {
               e.preventDefault();
-              if (idOk && nameOk && exam) setPhase("ready");
+              if (idOk && nameOk && exam && agreed && !busy) void start();
             }}
           >
             <label className="flex min-w-0 flex-[1_1_180px] flex-col gap-1.5">
@@ -212,24 +181,33 @@ export function StartScreen() {
               <p className="m-0 w-full text-[13px] text-alert">학번은 영문·숫자·-·_ 1~32자로 적어 주세요.</p>
             )}
 
-            <div className="flex w-full flex-wrap items-center gap-5 rounded-[22px] border border-dashed border-line-2 px-5 py-[18px]">
-              <svg width="72" height="72" viewBox="0 0 104 104" aria-hidden="true">
-                <rect x="6" y="6" width="92" height="92" rx="28" fill="#FFF7EC" stroke="#D9C3A5" strokeWidth="2" strokeDasharray="6 6" />
-                <circle cx="52" cy="46" r="17" fill="none" stroke="#B48A5E" strokeWidth="2.5" />
-                <path d="M26 86c6-14 46-14 52 0" fill="none" stroke="#B48A5E" strokeWidth="2.5" strokeLinecap="round" />
-              </svg>
-              <div className="flex flex-[1_1_220px] flex-col gap-1.5">
-                <span className="flex items-center gap-2 text-[17px] font-bold">
-                  본인 확인 <span className="rounded-full bg-cream-2 px-2.5 py-0.5 text-xs text-leaf">확인 전</span>
-                </span>
-                <span className="text-sm text-sub">시험 전에 페이스페이로 응시자 본인을 확인해요.</span>
+            <button
+              type="button"
+              role="checkbox"
+              aria-checked={agreed}
+              onClick={() => setAgreed((v) => !v)}
+              className={`flex w-full cursor-pointer items-start gap-3 rounded-2xl border-2 bg-leaf-bg px-4 py-3.5 text-left text-leaf ${agreed ? "border-leaf" : "border-transparent"}`}
+            >
+              <span className={`flex h-[22px] w-[22px] flex-none items-center justify-center rounded-md border-2 border-leaf text-sm font-bold text-white ${agreed ? "bg-leaf" : "bg-white"}`}>
+                {agreed ? "✓" : ""}
+              </span>
+              <span className="text-sm leading-relaxed">질문 내용과 글쓰기 과정이 기록되어 선생님께 전달된다는 것을 확인했어요.</span>
+            </button>
+            {error && (
+              <div className="w-full">
+                <ErrorBox>{error}</ErrorBox>
               </div>
-              <button type="submit" disabled={!idOk || !nameOk || !exam} className={`${btn.secondary} border-2 border-leaf text-leaf`}>
-                본인 확인하기
+            )}
+            {idOk && nameOk && exam && agreed ? (
+              <button type="submit" disabled={busy} className={`${btn.primary} min-h-[60px] w-full text-[22px]`}>
+                {busy ? "시험지를 여는 중…" : "시험 시작하기"}
               </button>
-            </div>
+            ) : (
+              <span className={`${btn.disabledBox} w-full`}>
+                {!idOk || !nameOk ? "학번과 이름을 적으면 시작할 수 있어요" : !exam ? "열린 수행평가가 없어요" : "위 내용을 확인하면 시작할 수 있어요"}
+              </span>
+            )}
           </form>
-          <span className={btn.disabledBox}>본인 확인 후 시작할 수 있어요</span>
         </section>
 
         <aside className="flex min-w-0 flex-[1_1_320px] flex-col gap-4">
@@ -264,152 +242,5 @@ function Shell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen w-full bg-cream px-8 pt-6 pb-12 max-sm:px-4">
       <div className="mx-auto flex max-w-[1280px] flex-col gap-[22px]">{children}</div>
     </div>
-  );
-}
-
-function FaceCheck(props: {
-  phase: Exclude<Phase, "intro">;
-  name: string;
-  fails: number;
-  agreed: boolean;
-  busy: boolean;
-  error: string | null;
-  onAgree: () => void;
-  onBack: () => void;
-  onScan: () => void;
-  onResult: (ok: boolean) => void;
-  onStart: () => void;
-}) {
-  const { phase } = props;
-  const ring = phase === "ok" ? "#4CB66B" : phase === "fail" ? "#E05A5A" : phase === "scan" ? "#F6B36F" : "#FFFFFF";
-  const stepIdx = phase === "ready" ? 0 : phase === "ok" ? 2 : 1;
-  return (
-    <main className={`${card} mx-auto mt-3 box-border flex w-full max-w-[1040px] flex-wrap items-center gap-10 p-10 max-sm:p-6`}>
-      <div className="relative min-w-0 max-w-[420px] flex-[1_1_340px]">
-        <svg viewBox="0 0 400 400" width="100%" role="img" aria-label="카메라 화면 (모의)" className="block rounded-[28px] bg-[#2B2119]">
-          <rect width="400" height="400" fill="#2B2119" />
-          <circle cx="200" cy="170" r="62" fill="#4A3A2E" />
-          <path d="M90 400c10-90 210-90 220 0" fill="#4A3A2E" />
-          <ellipse cx="200" cy="185" rx="118" ry="150" fill="none" stroke={ring} strokeWidth="5" strokeDasharray={phase === "ready" ? "8 8" : undefined} />
-          {phase === "ok" && (
-            <g transform="translate(300 300)">
-              <circle r="34" fill="#4CB66B" />
-              <path d="M-14 0l9 9 18-18" fill="none" stroke="#FFFFFF" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-            </g>
-          )}
-          {phase === "fail" && (
-            <g transform="translate(300 300)">
-              <circle r="34" fill="#E05A5A" />
-              <path d="M-11-11l22 22M11-11l-22 22" stroke="#FFFFFF" strokeWidth="6" strokeLinecap="round" />
-            </g>
-          )}
-          <circle cx="28" cy="28" r="7" fill="#E05A5A">
-            <animate attributeName="opacity" values="1;.3;1" dur="1.4s" repeatCount="indefinite" />
-          </circle>
-          <text x="44" y="33" fontSize="14" fill="#FFFFFF" opacity=".8">카메라</text>
-        </svg>
-        {phase === "scan" && (
-          <span aria-hidden="true" className="absolute left-[20%] h-1 w-[60%] rounded bg-[#F6B36F]" style={{ animation: "dotori-scan 2.2s ease-in-out infinite" }} />
-        )}
-      </div>
-
-      <div className="flex min-w-0 flex-[1_1_340px] flex-col gap-5">
-        <div className="flex flex-col gap-2.5">
-          <div className="flex items-center gap-2.5">
-            <span className="text-sm font-bold text-leaf">페이스페이 본인 확인</span>
-            <span className="flex gap-1" aria-hidden="true">
-              {[0, 1, 2].map((i) => (
-                <span key={i} className={`h-2 rounded-full ${i === stepIdx ? "w-7 bg-leaf" : i < stepIdx ? "w-2 bg-leaf" : "w-2 bg-line-3"}`} />
-              ))}
-            </span>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="m-0 font-display text-4xl font-normal">
-              {phase === "ready" && "얼굴을 원 안에 맞춰 주세요"}
-              {phase === "scan" && "확인하고 있어요"}
-              {phase === "fail" && "얼굴을 확인하지 못했어요"}
-              {phase === "ok" && `${props.name} 님, 확인됐어요`}
-            </h1>
-            {phase === "ok" && <Squirrel size={56} />}
-          </div>
-        </div>
-
-        {phase === "ready" && (
-          <>
-            <ul className="m-0 flex list-none flex-col gap-2.5 p-0 text-[15px]">
-              <li>· 밝은 곳에서 정면을 봐 주세요</li>
-              <li>· 모자와 마스크는 잠깐 벗어 주세요</li>
-              <li>· 화면에서 한 뼘 정도 떨어져 주세요</li>
-            </ul>
-            <div className="flex flex-wrap gap-2.5">
-              <button type="button" onClick={props.onBack} className={btn.secondary}>이전</button>
-              <button type="button" onClick={props.onScan} className={btn.primary}>인식 시작</button>
-            </div>
-          </>
-        )}
-
-        {phase === "scan" && (
-          <>
-            <div className="flex flex-col gap-2">
-              <div className="h-3 overflow-hidden rounded-md bg-leaf-bg" aria-hidden="true">
-                <div className="h-3 rounded-md bg-nut" style={{ animation: "dotori-fill 2.4s linear infinite" }} />
-              </div>
-              <span className="text-[15px] text-sub">움직이지 말고 화면을 봐 주세요. 2~3초면 끝나요.</span>
-            </div>
-            <div className="flex flex-col gap-2 rounded-2xl border border-dashed border-line-2 px-4 py-3.5">
-              <span className="text-xs text-muted">시연용 결과 선택</span>
-              <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => props.onResult(true)} className={`${btn.secondary} min-h-11 border-[#9FD3AE] text-[#23633A]`}>인식 성공</button>
-                <button type="button" onClick={() => props.onResult(false)} className={`${btn.secondary} min-h-11 border-[#EBB0B0] text-del`}>인식 실패</button>
-              </div>
-            </div>
-            <button type="button" onClick={props.onBack} className="w-fit cursor-pointer border-0 bg-transparent p-0 text-sm text-leaf underline">취소</button>
-          </>
-        )}
-
-        {phase === "fail" && (
-          <>
-            <div className="flex flex-col gap-1.5 rounded-2xl bg-alert-bg px-4 py-3.5 text-sm leading-relaxed text-alert">
-              <strong>시도 {Math.min(props.fails, 3)}/3</strong>
-              <span>조명이 어둡거나 얼굴이 원 밖에 있었어요. 다시 맞춰 볼까요?</span>
-            </div>
-            <div className="flex flex-wrap gap-2.5">
-              <button type="button" onClick={props.onBack} className={btn.secondary}>처음으로</button>
-              <button type="button" onClick={props.onScan} className={btn.primary}>다시 시도</button>
-            </div>
-            <span className="text-[13px] text-muted">3번 모두 실패하면 선생님이 직접 확인한 뒤 시험을 열어 줘요.</span>
-          </>
-        )}
-
-        {phase === "ok" && (
-          <>
-            <button
-              type="button"
-              role="checkbox"
-              aria-checked={props.agreed}
-              onClick={props.onAgree}
-              className={`flex cursor-pointer items-start gap-3 rounded-2xl border-2 bg-leaf-bg px-4 py-3.5 text-left text-leaf ${props.agreed ? "border-leaf" : "border-transparent"}`}
-            >
-              <span className={`flex h-[22px] w-[22px] flex-none items-center justify-center rounded-md border-2 border-leaf text-sm font-bold text-white ${props.agreed ? "bg-leaf" : "bg-white"}`}>
-                {props.agreed ? "✓" : ""}
-              </span>
-              <span className="text-sm leading-relaxed">질문 내용과 글쓰기 과정이 기록되어 선생님께 전달된다는 것을 확인했어요.</span>
-            </button>
-            {props.error && <ErrorBox>{props.error}</ErrorBox>}
-            {props.agreed ? (
-              <button type="button" onClick={props.onStart} disabled={props.busy} className={`${btn.primary} min-h-[60px] text-[22px]`}>
-                {props.busy ? "시험지를 여는 중…" : "시험 시작하기"}
-              </button>
-            ) : (
-              <span className={btn.disabledBox}>위 내용을 확인하면 시작할 수 있어요</span>
-            )}
-          </>
-        )}
-
-        <span className="flex items-center gap-1.5 text-xs text-faint">
-          <Acorn size={12} ghost /> 해커톤 시연용 페이스페이 모의 화면 · 얼굴 사진은 저장하지 않아요
-        </span>
-      </div>
-    </main>
   );
 }

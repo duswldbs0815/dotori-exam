@@ -102,7 +102,7 @@ export type SchoolOverviewResponse = {
 export type ApiError = { error: string };
 
 // POST /api/exam/start
-export type StartRequest = { studentId: string; name: string; verified: boolean; examId?: string; classId?: string };
+export type StartRequest = { studentId: string; name: string; examId?: string; classId?: string };
 export type StartResponse = { attemptId: string; exam: ExamInfo };
 
 // POST /api/outline : 개요 4항목 + 항목별 도토리 계획

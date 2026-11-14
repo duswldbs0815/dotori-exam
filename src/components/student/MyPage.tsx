@@ -84,24 +84,24 @@ export function MyPage() {
   );
 }
 
-/* ── 로그인 (본인 확인 모의) ── */
+/* ── 로그인 (학번 + 이름) ── */
 
 function Login({ onDone }: { onDone: () => void }) {
   const [studentId, setStudentId] = useState("");
   const [name, setName] = useState("");
-  const [phase, setPhase] = useState<"form" | "scan">("form");
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setPhase("scan");
+    setBusy(true);
     try {
-      await Promise.all([api.meLogin(studentId.trim(), name.trim()), new Promise((r) => setTimeout(r, 1200))]);
+      await api.meLogin(studentId.trim(), name.trim());
       onDone();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "들어가지 못했어요.");
-      setPhase("form");
+      setBusy(false);
     }
   }
 
@@ -110,18 +110,10 @@ function Login({ onDone }: { onDone: () => void }) {
       <Squirrel size={110} />
       <h1 className="m-0 font-display text-[36px] font-normal">내 학습 기록 보기</h1>
       <p className="m-0 text-[15px] leading-relaxed text-sub">
-        학번과 이름으로 본인 확인을 하면 지금까지 푼 수행평가와 내 다람쥐를 볼 수 있어요.
+        학번과 이름을 적으면 지금까지 푼 수행평가와 내 다람쥐를 볼 수 있어요.
         <br />
         시험을 시작했던 브라우저라면 바로 들어가져요.
       </p>
-      {phase === "scan" ? (
-        <div className="flex flex-col items-center gap-3 py-4">
-          <div className="relative h-24 w-24 overflow-hidden rounded-3xl border-2 border-dashed border-line-2 bg-paper">
-            <div className="absolute right-2 left-2 h-0.5 bg-leaf-2" style={{ animation: "dotori-scan 1.2s ease-in-out infinite" }} />
-          </div>
-          <span className="text-[14px] text-sub">페이스페이로 본인 확인 중…</span>
-        </div>
-      ) : (
         <form onSubmit={submit} className="flex w-full flex-col gap-3">
           <input
             value={studentId}
@@ -138,12 +130,11 @@ function Login({ onDone }: { onDone: () => void }) {
             className="min-h-12 rounded-2xl border border-line bg-paper px-4 text-[15px]"
           />
           {error && <p className="m-0 text-[13px] text-alert">{error}</p>}
-          <button type="submit" disabled={!studentId.trim() || !name.trim()} className={btn.primary}>
-            본인 확인하고 들어가기
+          <button type="submit" disabled={busy || !studentId.trim() || !name.trim()} className={btn.primary}>
+            {busy ? "들어가는 중…" : "내 기록 보기"}
           </button>
           <p className="m-0 text-xs text-muted">시연용이에요. 가상 학생 정보로 들어가요 (예: S01 · 가상학생A).</p>
         </form>
-      )}
     </main>
   );
 }
@@ -280,7 +271,7 @@ function AttemptCard({ a, me }: { a: MyAttempt; me: { id: string; name: string }
   async function resume() {
     setBusy(true);
     try {
-      const res = await api.start({ studentId: me.id, name: me.name, verified: true, examId: a.examId, classId: a.classId });
+      const res = await api.start({ studentId: me.id, name: me.name, examId: a.examId, classId: a.classId });
       rememberSession(res.attemptId, { name: me.name, exam: res.exam });
       router.push(`/exam/${encodeURIComponent(res.attemptId)}`);
     } catch {
