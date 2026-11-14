@@ -172,7 +172,7 @@ export function StartScreen() {
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="예: 가상학생07"
+                placeholder="예: 김서진"
                 autoComplete="off"
                 className="min-h-12 rounded-2xl border border-line bg-paper px-4 text-[15px]"
               />

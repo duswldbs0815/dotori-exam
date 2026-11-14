@@ -133,7 +133,7 @@ function Login({ onDone }: { onDone: () => void }) {
           <button type="submit" disabled={busy || !studentId.trim() || !name.trim()} className={btn.primary}>
             {busy ? "들어가는 중…" : "내 기록 보기"}
           </button>
-          <p className="m-0 text-xs text-muted">시연용이에요. 가상 학생 정보로 들어가요 (예: S01 · 가상학생A).</p>
+          <p className="m-0 text-xs text-muted">시연용이에요. 가상 학생 정보로 들어가요 (예: 20119 · 임하린).</p>
         </form>
     </main>
   );
