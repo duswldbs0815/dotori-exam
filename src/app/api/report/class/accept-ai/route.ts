@@ -1,4 +1,3 @@
-import { sameGrading } from "@/lib/ai-grade";
 import { requireSubject, requireTeacher } from "@/lib/auth";
 import { getExam } from "@/lib/exams";
 import { fail, handle, nowIso, readJson } from "@/lib/http";
@@ -22,7 +21,7 @@ export const POST = handle(async (req: Request) => {
   for (const r of recs) {
     if (!r.final) continue;
     if (r.grade) { res.skipped.graded++; continue; }
-    if (!r.aiGrade || r.aiGradeFor !== r.final || !sameGrading(r.aiGrade, exam) || r.aiGrade.items.some((v) => v === null)) { res.skipped.noAi++; continue; }
+    if (!r.aiGrade || r.aiGradeFor !== r.final || r.aiGrade.items.some((v) => v === null)) { res.skipped.noAi++; continue; }
     if (checkFlags(r, exam).length) { res.skipped.flagged++; continue; }
     const ok = await updateAttempt(r.attemptId, (cur) => {
       if (!cur || cur.grade || !cur.aiGrade || cur.aiGradeFor !== cur.final) return { rec: null, result: false };

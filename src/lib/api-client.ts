@@ -2,6 +2,7 @@
 import type {
   AcceptAiRequest,
   AcceptAiResponse,
+  AiGradeRequest,
   AiGradeResponse,
   Grade,
   GradeRequest,
@@ -83,7 +84,7 @@ export const api = {
   saveExam: (body: SaveExamRequest) => call<SaveExamResponse>("/api/teacher/exams", { body }),
   studentReport: (studentId: string) => call<StudentReportResponse>(`/api/report/${enc(studentId)}`),
   saveGrade: (studentId: string, body: GradeRequest) => call<{ grade: Grade }>(`/api/report/${enc(studentId)}/grade`, { body }),
-  aiGrade: (studentId: string) => call<AiGradeResponse>(`/api/report/${enc(studentId)}/ai-grade`, { method: "POST" }),
+  aiGrade: (studentId: string, body: AiGradeRequest = {}) => call<AiGradeResponse>(`/api/report/${enc(studentId)}/ai-grade`, { body }),
   acceptAi: (body: AcceptAiRequest) => call<AcceptAiResponse>("/api/report/class/accept-ai", { body }),
   classCsvUrl: (classId: string, examId: string) => `/api/report/class/csv?${new URLSearchParams({ classId, examId })}`,
 };

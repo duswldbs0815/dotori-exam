@@ -200,6 +200,8 @@ export type AiGrade = {
   at: string;
 };
 // POST /api/report/:studentId/ai-grade (교사)
+/** 본문 생략 가능. 주면 그 채점 단계로 (교사가 채점 칸에서 고른 단계) */
+export type AiGradeRequest = { scale?: GradeScale; max?: number; itemMax?: number[] };
 export type AiGradeResponse = { aiGrade: AiGrade };
 // POST /api/report/class/accept-ai (교사): 확인할 점 없는 학생의 AI 제안을 교사 채점으로 확정
 export type AcceptAiRequest = { classId: string; examId: string };

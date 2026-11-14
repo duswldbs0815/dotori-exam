@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, ApiError, shortLabels } from "@/lib/api-client";
 import { classLabel } from "@/lib/school";
-import type { ClassReportResponse, SchoolOverviewResponse } from "@/lib/types";
+import type { ClassReportResponse, GradeScale, SchoolOverviewResponse } from "@/lib/types";
 import { BackLink, card, ErrorBox, Loading } from "../ui";
 import { gradeDone } from "@/lib/grading";
 import { TeacherGate, TeacherShell } from "./TeacherShell";
@@ -67,11 +67,17 @@ function ClassViewInner() {
     const todo = (data?.students ?? []).filter((r) => r.submitted && !r.aiGraded);
     if (!todo.length) return;
     setAiMsg(null);
+    // 채점 칸에서 이 수행평가에 마지막으로 고른 단계가 있으면 그 단계로 (없으면 수행평가 기본 단계)
+    let spec: { scale?: GradeScale; max?: number } = {};
+    try {
+      const v = JSON.parse(localStorage.getItem(`dotori-grade-scale-${examId}`) ?? "null");
+      if (v?.scale) spec = { scale: v.scale, ...(v.scale === "points" && v.max ? { max: Number(v.max) } : {}) };
+    } catch {}
     let fail = 0;
     let stop: string | null = null;
     for (let i = 0; i < todo.length && !stop; i++) {
       setAiRun({ done: i, total: todo.length });
-      await api.aiGrade(todo[i].attemptId).catch((e) => {
+      await api.aiGrade(todo[i].attemptId, spec).catch((e) => {
         fail++;
         // 크레딧 소진은 다음 학생도 똑같이 실패하므로 바로 멈춤
         if (e instanceof ApiError && e.status === 402) stop = e.message;

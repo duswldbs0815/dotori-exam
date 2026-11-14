@@ -401,7 +401,7 @@ AI가 자료와 채점기준표를 읽고 개요 4항목, 항목별 `itemGuides`
 - 학생 리포트 응답에 `grade`, `grading`(수행평가 기본 단계, `itemMax?`), 🔄 `criteria?`(항목별 채점 기준), 🔄 `aiGrade`(AI 1차 채점 제안, 없으면 `null`), `flags`(먼저 확인할 점)가 함께 옵니다.
 
 ### 🔄 POST /api/report/:studentId/ai-grade (11/14)
-AI 1차 채점. 본문 없음. 응답 `{ aiGrade: { scale, max?, itemMax?, items, reasons, at } }`
+AI 1차 채점. 본문 `{ scale?, max?, itemMax? }` (생략 가능): 교사가 채점 칸에서 고른 단계로 채점. 생략하면 수행평가 기본 단계 (반 화면 일괄 채점은 채점 칸에서 마지막으로 고른 단계를 보냄). 응답 `{ aiGrade: { scale, max?, itemMax?, items, reasons, at } }`
 - 교사가 정한 **채점 기준(`criteria`)만** 보고 제출한 글을 항목마다 채점한 **제안**. 항목마다 학생 글을 인용한 이유 한 문장(`reasons`)
 - AI 사용량·붙여넣기·차단 같은 과정 정보와 학생 이름·학번은 AI에 보내지 않음. 과정은 `flags`(숫자·사실)로만 보여 주고 판단은 교사가 함
 - 제출한 글이 있어야 함 (없으면 400). 같은 글·같은 채점 방식이면 저장해 둔 제안을 그대로 돌려줌 (AI 다시 안 부름). 글이 바뀌면 리포트의 `aiGrade`는 `null`
@@ -409,6 +409,7 @@ AI 1차 채점. 본문 없음. 응답 `{ aiGrade: { scale, max?, itemMax?, items
 
 ### 🔄 POST /api/report/class/accept-ai (11/14)
 `{ classId, examId }` → `{ accepted: string[], skipped: { flagged, graded, noAi } }`
+- AI 제안의 채점 단계 그대로 확정
 - 확인할 점(`flags`)이 **없는** 학생 중 AI 제안이 있고 아직 교사 채점이 없는 학생만, AI 제안을 교사 채점으로 확정
 - 확인할 점이 있는 학생·이미 채점한 학생·제안이 없는 학생은 건너뜀 → 교사가 학생 리포트에서 직접 확인
 - 화면에서 "확정한 점수의 책임은 선생님께 있어요" 확인 창을 거침. 확정 후에도 학생 리포트에서 고칠 수 있음

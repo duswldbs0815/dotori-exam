@@ -4,7 +4,9 @@
 import { callLLMJson } from "./llm";
 import { levelsOf, maxOf, validValue } from "./grading";
 import { DEFAULT_MAX, DEFAULT_SCALE } from "./grading";
-import type { AiGrade, ExamDef } from "./types";
+import type { AiGrade, ExamDef, GradeScale } from "./types";
+
+export type GradingSpec = { scale: GradeScale; max?: number; itemMax?: number[] };
 
 const SYSTEM = `너는 중학교 교사의 수행평가 채점을 돕는 1차 채점 보조다. 최종 점수는 교사가 확인하고 정한다.
 규칙:
@@ -15,21 +17,24 @@ const SYSTEM = `너는 중학교 교사의 수행평가 채점을 돕는 1차 �
 - 문자열 안에서 큰따옴표(")를 쓰지 말고 작은따옴표(')를 쓴다.
 JSON 형식 (항목 순서대로): {"items":[{"v":"","why":""}]}`;
 
-export function gradingOf(exam: ExamDef) {
+/** 수행평가 기본 채점 단계 */
+export function gradingOf(exam: ExamDef): GradingSpec {
   const scale = exam.grading?.scale ?? DEFAULT_SCALE;
   const max = exam.grading?.max ?? DEFAULT_MAX;
   const itemMax = scale === "points" ? exam.grading?.itemMax : undefined;
   return { scale, ...(scale === "points" ? { max } : {}), ...(itemMax ? { itemMax } : {}) };
 }
 
-/** 저장해 둔 AI 제안이 지금 수행평가 채점 방식과 같은지 */
-export function sameGrading(a: Pick<AiGrade, "scale" | "max" | "itemMax">, exam: ExamDef) {
-  const g = gradingOf(exam);
+/** 두 채점 방식이 같은지 (단계·만점·항목별 배점) */
+export function sameSpec(a: GradingSpec, g: GradingSpec) {
   return a.scale === g.scale && (a.max ?? null) === (g.max ?? null) && JSON.stringify(a.itemMax ?? null) === JSON.stringify(g.itemMax ?? null);
 }
 
-export async function aiGradeText(exam: ExamDef, final: string): Promise<AiGrade> {
-  const g = gradingOf(exam);
+/** 저장해 둔 AI 제안이 수행평가 기본 채점 방식과 같은지 */
+export const sameGrading = (a: GradingSpec, exam: ExamDef) => sameSpec(a, gradingOf(exam));
+
+/** g를 안 주면 수행평가 기본 단계로. 교사가 채점 칸에서 다른 단계를 골랐으면 그 단계로 */
+export async function aiGradeText(exam: ExamDef, final: string, g: GradingSpec = gradingOf(exam)): Promise<AiGrade> {
   const levels = levelsOf(g.scale);
   const items = exam.outlineItems.map((name, i) => {
     const how = levels ? `단계: ${levels.join(" / ")}` : `0~${maxOf(g, i)}점 정수`;

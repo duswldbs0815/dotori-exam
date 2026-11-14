@@ -113,7 +113,8 @@ export function Grading({ studentId, data, onSeek }: { studentId: string; data: 
     setAiBusy(true);
     setAiError(null);
     try {
-      setAiGrade((await api.aiGrade(studentId)).aiGrade);
+      // 지금 고른 채점 단계로 받음
+      setAiGrade((await api.aiGrade(studentId, { scale, ...(scale === "points" ? { max, ...(itemMax ? { itemMax } : {}) } : {}) })).aiGrade);
     } catch (e) {
       setAiError(e instanceof ApiError ? e.message : "AI 1차 채점을 받지 못했어요.");
     } finally {
@@ -237,7 +238,14 @@ export function Grading({ studentId, data, onSeek }: { studentId: string; data: 
               AI 제안 모두 적용
             </button>
           )}
-          {aiGrade && !aiFits && <span className="text-muted">채점 단계가 AI 제안과 달라 옮길 수 없어요 (제안은 참고만)</span>}
+          {aiGrade && !aiFits && (
+            <>
+              <span className="text-muted">AI 제안은 {GRADE_SCALES.find((s) => s.id === aiGrade.scale)?.label} 기준이에요</span>
+              <button type="button" disabled={aiBusy} onClick={askAi} className="min-h-9 cursor-pointer rounded-full border-0 bg-leaf px-4 text-[13px] font-bold text-white disabled:opacity-50">
+                {aiBusy ? "채점 기준과 비교하는 중…" : `${GRADE_SCALES.find((s) => s.id === scale)?.label}(으)로 다시 받기`}
+              </button>
+            </>
+          )}
         </span>
         {aiError && <span className="w-full font-bold text-alert">{aiError}</span>}
       </div>
