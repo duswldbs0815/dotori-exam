@@ -13,6 +13,9 @@ export const DEFAULT_MAX = 25;
 
 export const levelsOf = (scale: GradeScale) => GRADE_SCALES.find((s) => s.id === scale)?.levels ?? null;
 
+/** 항목 i의 만점 (점수 채점). 항목별 배점이 있으면 그것 */
+export const maxOf = (g: { max?: number; itemMax?: number[] }, i: number) => g.itemMax?.[i] ?? g.max ?? DEFAULT_MAX;
+
 /** 값 하나가 이 단계에 맞는지 (안 매긴 null도 됨) */
 export function validValue(scale: GradeScale, max: number, v: unknown): v is string | number | null {
   if (v === null) return true;

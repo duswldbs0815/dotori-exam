@@ -222,7 +222,13 @@ export function buildStudentReport(rec: AttemptRecord, examDef: ExamDef): Studen
     sentences: final ? sentencePaths(rec, final) : [],
     timelapse: buildTimelapse(rec, final),
     grade: rec.grade ?? null,
-    grading: { scale: examDef.grading?.scale ?? DEFAULT_SCALE, max: examDef.grading?.max ?? DEFAULT_MAX },
+    grading: {
+      scale: examDef.grading?.scale ?? DEFAULT_SCALE,
+      max: examDef.grading?.max ?? DEFAULT_MAX,
+      ...(examDef.grading?.itemMax ? { itemMax: examDef.grading.itemMax } : {}),
+    },
+    ...(examDef.criteria ? { criteria: examDef.criteria } : {}),
+    aiGrade: rec.aiGrade && rec.aiGradeFor === final ? rec.aiGrade : null,
     flags: checkFlags(rec, examDef),
   };
 }
@@ -257,6 +263,7 @@ export function buildClassReport(recs: AttemptRecord[], examDef?: ExamDef): Clas
       totalUsed: totalUsed(r),
       flags: checkFlags(r, examDef),
       grade: r.grade ?? null,
+      aiGraded: !!r.aiGrade && r.aiGradeFor === (r.final ?? r.draft),
       blockedCount: r.questions.filter((q) => q.blocked).length,
       submitted: r.submittedAt !== null,
     })),

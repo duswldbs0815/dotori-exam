@@ -54,7 +54,10 @@ function NewExamInner() {
   const [passageTitle, setPassageTitle] = useState("");
   const [passageBody, setPassageBody] = useState("");
   const [scale, setScale] = useState<GradeScale>(DEFAULT_SCALE);
-  const [maxPts, setMaxPts] = useState(DEFAULT_MAX);
+  const maxPts = DEFAULT_MAX;
+  // 🔄 11/14 항목별 배점 (점수 채점일 때). 비워 두면 모두 maxPts
+  const [itemMax, setItemMax] = useState<number[] | null>(null);
+  const ptsOf = (i: number) => itemMax?.[i] ?? maxPts;
 
   const gradeClasses = CLASS_IDS.filter((c) => c.startsWith(`${grade}-`));
   const step1Ok = task.trim().length > 0 && classIds.length > 0;
@@ -100,7 +103,8 @@ function NewExamInner() {
         materials: draft.materials,
         rationale: draft.rationale,
         ...(passageBody.trim() ? { passage: { title: passageTitle.trim() || "지문", body: passageBody.trim() } } : {}),
-        grading: { scale, ...(scale === "points" ? { max: maxPts } : {}) },
+        ...(criteriaOf(draft).some((c) => c.trim()) ? { criteria: criteriaOf(draft).map((c) => c.trim()) } : {}),
+        grading: { scale, ...(scale === "points" ? { max: maxPts, itemMax: [0, 1, 2, 3].map(ptsOf) } : {}) },
       });
       setSaved(exam);
       setStep(3);
@@ -114,6 +118,9 @@ function NewExamInner() {
 
   const setGuide = (i: number, patch: Partial<ExamSuggestion["itemGuides"][number]>) =>
     setDraft((d) => (d ? { ...d, itemGuides: d.itemGuides.map((g, j) => (j === i ? { ...g, ...patch } : g)) } : d));
+  const criteriaOf = (d: ExamSuggestion) => d.criteria ?? ["", "", "", ""];
+  const setCriteria = (i: number, v: string) =>
+    setDraft((d) => (d ? { ...d, criteria: criteriaOf(d).map((c, j) => (j === i ? v : c)) } : d));
   const setList = (key: "outlineItems" | "shortItems" | "reflectionQuestions", i: number, v: string) =>
     setDraft((d) => (d ? { ...d, [key]: d[key].map((x, j) => (j === i ? v : x)) } : d));
 
@@ -373,6 +380,34 @@ function NewExamInner() {
                     </button>
                   </div>
                 </div>
+                <label className="col-span-full flex flex-col gap-1 lg:col-start-2">
+                  <span className="text-xs font-bold text-ink">
+                    채점 기준 <span className="font-normal text-muted">— AI 1차 채점은 이 기준만 보고 판단해요</span>
+                    {scale === "points" && <span className="ml-2 font-normal text-muted">배점</span>}
+                    {scale === "points" && (
+                      <input
+                        type="number"
+                        min={1}
+                        max={1000}
+                        aria-label={`${i + 1}번 항목 배점`}
+                        value={ptsOf(i)}
+                        onChange={(e) => {
+                          const v = Math.max(1, Math.min(1000, Math.round(Number(e.target.value) || 1)));
+                          setItemMax([0, 1, 2, 3].map((j) => (j === i ? v : ptsOf(j))));
+                        }}
+                        className="ml-1.5 h-8 w-16 rounded-lg border border-line-2 bg-white px-2 text-right font-bold text-ink"
+                      />
+                    )}
+                    {scale === "points" && <span className="ml-1 font-normal text-muted">점</span>}
+                  </span>
+                  <textarea
+                    rows={2}
+                    value={criteriaOf(draft)[i]}
+                    onChange={(e) => setCriteria(i, e.target.value.slice(0, 400))}
+                    placeholder="예: 상: 근거를 두 개 이상 들어 주장을 뒷받침함 / 중: 근거가 하나 / 하: 근거 없이 주장만 함"
+                    className={`${area} text-sm`}
+                  />
+                </label>
               </div>
             ))}
             {draft.blockedExamples.length > 0 && (
@@ -410,11 +445,14 @@ function NewExamInner() {
                 </button>
               ))}
               {scale === "points" && (
-                <label className="flex items-center gap-1.5 text-[14px] text-muted">
-                  항목당
-                  <input type="number" min={1} max={1000} value={maxPts} onChange={(e) => setMaxPts(Math.max(1, Math.min(1000, Math.round(Number(e.target.value) || 1))))} className="h-10 w-16 rounded-lg border border-line-2 bg-white px-2 text-right font-bold text-ink" />
-                  점
-                </label>
+                <span className="flex items-center gap-1.5 text-[14px] text-muted">
+                  항목별 배점은 위 채점 기준 옆에서 정해요 · 총 <b className="text-ink">{[0, 1, 2, 3].reduce((a, i) => a + ptsOf(i), 0)}</b>점
+                  {itemMax && (
+                    <button type="button" onClick={() => setItemMax(null)} className="cursor-pointer border-0 bg-transparent text-[13px] text-leaf underline">
+                      모두 {maxPts}점으로
+                    </button>
+                  )}
+                </span>
               )}
             </div>
           </section>

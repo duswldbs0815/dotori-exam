@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError, hhmm, shortLabels } from "@/lib/api-client";
-import { DEFAULT_MAX, GRADE_SCALES, levelsOf, pointsTotal } from "@/lib/grading";
-import type { Grade, GradeScale, ReportQuestion, StudentReportResponse } from "@/lib/types";
+import { DEFAULT_MAX, GRADE_SCALES, levelsOf, maxOf, pointsTotal } from "@/lib/grading";
+import type { AiGrade, Grade, GradeScale, ReportQuestion, StudentReportResponse } from "@/lib/types";
 import { Acorn } from "../Acorn";
 import { card } from "../ui";
 
@@ -21,6 +21,7 @@ function rememberedScale(examId: string): { scale: GradeScale; max: number } | n
 
 /**
  * 교사 채점 칸. 결과물 채점은 선생님이, 그 옆에 항목별 과정 근거(질문·타임랩스 구간)를 붙여 한 화면에서 끝냄.
+ * 🔄 11/14 AI 1차 채점: 교사가 정한 채점 기준만 보고 매긴 제안을 항목 옆에 보여 주고, 교사가 확인·수정해서 확정 (책임은 교사).
  * 누를 때마다 자동 저장. 채점 단계(상·중·하 / A~E / 통과·미통과 / 점수)는 선생님이 고르고, 고른 단계는 다음 학생에도 이어짐.
  */
 export function Grading({ studentId, data, onSeek }: { studentId: string; data: StudentReportResponse; onSeek: (time: string) => void }) {
@@ -38,6 +39,12 @@ export function Grading({ studentId, data, onSeek }: { studentId: string; data: 
   const [saved, setSaved] = useState<{ state: "idle" | "saving" | "ok" | "error"; at?: string; msg?: string }>(
     init ? { state: "ok", at: init.gradedAt } : { state: "idle" },
   );
+  const [aiGrade, setAiGrade] = useState<AiGrade | null>(data.aiGrade);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  // 수행평가에 항목별 배점이 있으면 그걸 씀 (점수 채점일 때만)
+  const itemMax = scale === "points" ? (init?.scale === "points" && init.itemMax ? init.itemMax : data.grading.itemMax) : undefined;
+  const maxAt = (i: number) => maxOf({ max, itemMax }, i);
   const timer = useRef<number | null>(null);
   useEffect(() => () => void (timer.current && window.clearTimeout(timer.current)), []);
 
@@ -57,6 +64,7 @@ export function Grading({ studentId, data, onSeek }: { studentId: string; data: 
         .saveGrade(studentId, {
           scale: g.scale,
           ...(g.scale === "points" ? { max: g.max } : {}),
+          ...(g.scale === "points" && itemMax ? { itemMax } : {}),
           items: g.items,
           ...(g.ai !== undefined ? { ai: g.ai } : {}),
           comment: g.comment,
@@ -94,6 +102,30 @@ export function Grading({ studentId, data, onSeek }: { studentId: string; data: 
       setAi(undefined);
       save({ ai: "off" });
     }
+  };
+
+  // AI 제안을 지금 채점 단계에 그대로 옮길 수 있는지
+  const aiFits =
+    !!aiGrade &&
+    aiGrade.scale === scale &&
+    (scale !== "points" || (aiGrade.items.every((v, i) => typeof v !== "number" || v <= maxAt(i)) && JSON.stringify(aiGrade.itemMax ?? null) === JSON.stringify(itemMax ?? null)));
+  const askAi = async () => {
+    setAiBusy(true);
+    setAiError(null);
+    try {
+      setAiGrade((await api.aiGrade(studentId)).aiGrade);
+    } catch (e) {
+      setAiError(e instanceof ApiError ? e.message : "AI 1차 채점을 받지 못했어요.");
+    } finally {
+      setAiBusy(false);
+    }
+  };
+  const applyAll = () => {
+    if (!aiGrade || !aiFits) return;
+    if (data.flags.length && !window.confirm("확인할 점이 있는 학생이에요. 질문 기록·타임랩스로 과정을 확인하셨나요?\nAI 제안은 글만 본 결과라, 확정 책임은 선생님께 있어요.")) return;
+    const next = items.map((v, i) => aiGrade.items[i] ?? v);
+    setItems(next);
+    save({ items: next });
   };
 
   const qsOf = (i: number) => data.questions.filter((q) => q.outlineItem === i + 1);
@@ -151,7 +183,7 @@ export function Grading({ studentId, data, onSeek }: { studentId: string; data: 
               </button>
             ))}
           </div>
-          {scale === "points" && (
+          {scale === "points" && !itemMax && (
             <label className="flex items-center gap-1 text-[13px] text-muted">
               항목당
               <input
@@ -189,19 +221,53 @@ export function Grading({ studentId, data, onSeek }: { studentId: string; data: 
         </div>
       )}
 
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-leaf/25 bg-leaf-bg/50 px-4 py-3 text-[13px]">
+        <span className="flex flex-col gap-0.5">
+          <b className="text-ink">AI 1차 채점</b>
+          <span className="text-muted">채점 기준만 보고 매긴 제안이에요. AI 사용량·붙여넣기는 점수에 넣지 않고 위 확인할 점으로만 보여요. 최종 점수는 선생님이 확인하고 정해요.</span>
+        </span>
+        <span className="ml-auto flex flex-wrap items-center gap-2">
+          {!aiGrade && (
+            <button type="button" disabled={aiBusy || !data.submittedAt} onClick={askAi} className="min-h-9 cursor-pointer rounded-full border-0 bg-leaf px-4 text-[13px] font-bold text-white disabled:cursor-default disabled:opacity-50">
+              {aiBusy ? "채점 기준과 비교하는 중…" : data.submittedAt ? "AI 1차 채점 받기" : "제출 후 받을 수 있어요"}
+            </button>
+          )}
+          {aiGrade && aiFits && (
+            <button type="button" onClick={applyAll} className="min-h-9 cursor-pointer rounded-full border border-leaf bg-white px-4 text-[13px] font-bold text-leaf">
+              AI 제안 모두 적용
+            </button>
+          )}
+          {aiGrade && !aiFits && <span className="text-muted">채점 단계가 AI 제안과 달라 옮길 수 없어요 (제안은 참고만)</span>}
+        </span>
+        {aiError && <span className="w-full font-bold text-alert">{aiError}</span>}
+      </div>
+
       <ol className="m-0 flex list-none flex-col p-0">
         {data.exam.outlineItems.map((full, i) => (
-          <li key={i} className="grid grid-cols-[150px_1fr_auto] items-center gap-4 border-t border-line py-3.5 first:border-t-0 max-md:grid-cols-1 max-md:gap-2">
+          <li key={i} className="grid grid-cols-[200px_1fr_auto] items-start gap-4 border-t border-line py-3.5 first:border-t-0 max-md:grid-cols-1 max-md:gap-2">
             <span className="flex flex-col">
               <span className="text-[15px] font-bold text-ink">{labels[i] ?? full}</span>
-              {data.outline?.[i] && <span className="line-clamp-1 text-[12px] text-faint" title={data.outline[i]}>개요: {data.outline[i]}</span>}
+              {data.criteria?.[i] && <span className="mt-0.5 text-[12px] leading-snug text-muted">{data.criteria[i]}</span>}
             </span>
-            {evidence(qsOf(i), i)}
-            <ValueControl v={items[i]} onPick={(v) => setItem(i, v)} label={labels[i] ?? full} levels={levels} max={max} />
+            <div className="flex flex-col gap-1.5">
+              {evidence(qsOf(i), i)}
+              {aiGrade && (
+                <div className="flex flex-wrap items-baseline gap-1.5 text-[13px]">
+                  <span className="rounded-full bg-leaf-bg px-2 py-0.5 font-bold text-leaf">AI 제안 {aiGrade.items[i] ?? "—"}{typeof aiGrade.items[i] === "number" ? `/${maxOf(aiGrade, i)}` : ""}</span>
+                  <span className="text-sub">{aiGrade.reasons[i]}</span>
+                  {aiFits && aiGrade.items[i] !== null && items[i] !== aiGrade.items[i] && (
+                    <button type="button" onClick={() => setItem(i, aiGrade.items[i])} className="cursor-pointer border-0 bg-transparent p-0 text-[12px] font-bold text-leaf underline">
+                      {items[i] === null ? "적용" : "AI 제안과 다름 · 제안으로 바꾸기"}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+            <ValueControl v={items[i]} onPick={(v) => setItem(i, v)} label={labels[i] ?? full} levels={levels} max={maxAt(i)} />
           </li>
         ))}
         {ai !== undefined && (
-          <li className="grid grid-cols-[150px_1fr_auto] items-center gap-4 border-t border-line py-3.5 max-md:grid-cols-1 max-md:gap-2">
+          <li className="grid grid-cols-[200px_1fr_auto] items-start gap-4 border-t border-line py-3.5 max-md:grid-cols-1 max-md:gap-2">
             <span className="text-[15px] font-bold text-ink">AI 활용</span>
             <span className="text-[13px] text-muted">
               질문 {data.questions.filter((q) => !q.blocked).length} · 차단 {data.blockedCount} · 권장 {(data.exam.itemGuides ?? []).reduce((a, g) => a + g.acorns, 0)} → 실제 {data.acorns.totalUsed}
@@ -240,7 +306,7 @@ export function Grading({ studentId, data, onSeek }: { studentId: string; data: 
 
       <div className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
         <span className="text-muted">
-          {doneCount} / {rowCount} 항목 채점{total !== null ? ` · 합계 ${total} / ${max * rowCount}` : ""}
+          {doneCount} / {rowCount} 항목 채점{total !== null ? ` · 합계 ${total} / ${items.reduce<number>((a, _, i) => a + maxAt(i), 0) + (ai !== undefined ? max : 0)}` : ""}
         </span>
         <span aria-live="polite" className={saved.state === "error" ? "font-bold text-alert" : "text-muted"}>
           {saved.state === "saving" && "저장 중…"}

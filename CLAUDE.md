@@ -18,6 +18,7 @@
 - **P2는 발표 설명용이므로 구현하지 않는다.** (슈퍼스쿨 실연동, 페이스페이 실연동). 🔄 반 전체 요약 화면은 11/13 P1로 올려 구현함. 🔄 11/14: 가상 학교·수행평가 만들기(AI 기준 제안)·리포트 PDF·슈퍼스쿨 모의 전송 추가
 - 🔄 11/14: 교사 계정 = 과목 하나 담당 (`src/lib/teachers.ts`, 서버 전용). 교사 API는 `requireTeacher()`가 돌려준 교사 과목의 수행평가·기록만 다룬다 (`requireSubject`). 교사 화면: 홈 `/teacher`, 내 수행평가 `/teacher/exams`, 설계 사례 `/teacher/cases`
 - 🔄 11/14: 학생 화면은 **[수행평가 | AI 질문] 두 탭**뿐 (`WriteStep.tsx`). 개요·도토리 계획·성찰지 단계는 없앰. 교사 커뮤니티 사례는 `src/data/community.json`·`src/lib/community.ts`(가상 학교·교사). 강조색은 `leaf`(초록), 갈색은 도토리 그림에만
+- 🔄 11/14: AI 1차 채점 (`src/lib/ai-grade.ts`, 서버 전용) — 교사가 정한 채점 기준(`ExamDef.criteria`)만 보고 제안. 과정 정보·학생 이름은 AI에 보내지 않음. 확정(`grade`)은 늘 교사가
 - 🔄 11/14: 학생 마이페이지 `/me`(쿠키 `dotori_me`, 성장·꾸미기 `src/lib/growth.ts`), 지문 패널(`ExamInfo.passage`). `/me` 응답에도 메모·분류·작성 경로를 넣지 않는다.
 - 저장은 `src/lib/store.ts`·`exams.ts` → Supabase 환경 변수가 있으면 `src/lib/db.ts`, 없으면 `data/` JSON 파일
 
@@ -26,4 +27,4 @@
 - **학생 화면에는 메모·분류·작성 경로를 절대 노출하지 않는다.** 학생용 API 응답에도 이 값들을 넣지 않는다.
 - **가상 학생 데이터만 사용한다.** (예: `S07` / `가상학생07`) 실제 학생 정보를 넣지 않는다.
 - 도토리 숫자(목표 최대값, 안전 상한)는 화면에 직접 쓰지 않고 `exam/start` 응답의 `exam` 값을 쓴다.
-- `src/lib/llm.ts`, `tutor.ts`, `store.ts`, `report.ts`, `exams.ts`, `db.ts`, `teachers.ts`, `auth.ts`는 서버 전용이다. 클라이언트 컴포넌트에서 import하지 않는다.
+- `src/lib/llm.ts`, `tutor.ts`, `store.ts`, `report.ts`, `exams.ts`, `db.ts`, `teachers.ts`, `auth.ts`, `ai-grade.ts`는 서버 전용이다. 클라이언트 컴포넌트에서 import하지 않는다.

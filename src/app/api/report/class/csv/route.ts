@@ -31,7 +31,7 @@ export const GET = handle(async (req: Request) => {
   const lines = [head.map(cell).join(",")];
   for (const r of recs) {
     const g = r.grade;
-    const scale = g ? GRADE_SCALES.find((s) => s.id === g.scale)?.label + (g.scale === "points" ? ` (${g.max}점 만점)` : "") : "";
+    const scale = g ? GRADE_SCALES.find((s) => s.id === g.scale)?.label + (g.scale === "points" ? (g.itemMax ? ` (항목별 ${g.itemMax.join("·")}점)` : ` (${g.max}점 만점)`) : "") : "";
     lines.push(
       [
         r.student.id,

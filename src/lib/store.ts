@@ -4,7 +4,7 @@ import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promise
 import path from "node:path";
 import { dbDeleteIds, dbGet, dbGetVersioned, dbList, dbPut, dbSaveIfUnchanged, hasDb } from "./db";
 import { DEFAULT_CLASS_ID, DEFAULT_EXAM_ID } from "./school";
-import type { Grade, Outline, OutlineItemNo, PerItem, QuestionType, ReportSentence, Reflection, Stage } from "./types";
+import type { AiGrade, Grade, Outline, OutlineItemNo, PerItem, QuestionType, ReportSentence, Reflection, Stage } from "./types";
 
 export type QuestionRecord = {
   acornNo: number | null;
@@ -71,6 +71,9 @@ export type AttemptRecord = {
   submittedAt: string | null;
   /** 🔄 교사 채점 */
   grade?: Grade | null;
+  /** 🔄 AI 1차 채점 제안 (aiGradeFor = 그때 채점한 글. 글이 다르면 다시 매김) */
+  aiGrade?: AiGrade | null;
+  aiGradeFor?: string | null;
   /** 🔄 글 변화 기록 (타임랩스): 저장할 때마다 바뀐 부분만. 교사 리포트 전용 */
   draftLog?: DraftEdit[];
   /** 제출 후 AI가 판정한 문장별 작성 경로 (없으면 리포트에서 1차 판정 사용) */

@@ -1,5 +1,8 @@
 // 브라우저에서 쓰는 API 호출 도우미. 형식은 docs/API.md, 타입은 ./types.ts 와 같습니다.
 import type {
+  AcceptAiRequest,
+  AcceptAiResponse,
+  AiGradeResponse,
   Grade,
   GradeRequest,
   AskRequest,
@@ -80,6 +83,8 @@ export const api = {
   saveExam: (body: SaveExamRequest) => call<SaveExamResponse>("/api/teacher/exams", { body }),
   studentReport: (studentId: string) => call<StudentReportResponse>(`/api/report/${enc(studentId)}`),
   saveGrade: (studentId: string, body: GradeRequest) => call<{ grade: Grade }>(`/api/report/${enc(studentId)}/grade`, { body }),
+  aiGrade: (studentId: string) => call<AiGradeResponse>(`/api/report/${enc(studentId)}/ai-grade`, { method: "POST" }),
+  acceptAi: (body: AcceptAiRequest) => call<AcceptAiResponse>("/api/report/class/accept-ai", { body }),
   classCsvUrl: (classId: string, examId: string) => `/api/report/class/csv?${new URLSearchParams({ classId, examId })}`,
 };
 

@@ -45,6 +45,12 @@ const KOR2: ExamDef = {
     body: "나 보기가 역겨워\n가실 때에는\n말없이 고이 보내 드리우리다.\n\n영변에 약산\n진달래꽃\n아름 따다 가실 길에 뿌리우리다.\n\n가시는 걸음걸음\n놓인 그 꽃을\n사뿐히 즈려밟고 가시옵소서.\n\n나 보기가 역겨워\n가실 때에는\n죽어도 아니 눈물 흘리우리다.",
     source: "김소월, 『진달래꽃』(1925)",
   },
+  criteria: [
+    "상: 시대 배경·작가와 민요조 율격을 정확히 쓰고 주제와 연결함 / 중: 배경을 썼으나 주제와 연결이 약함 / 하: 배경이 없거나 틀림",
+    "상: 시어 2개 이상의 뜻과 반어 등 표현법을 정확히 설명함 / 중: 시어 1개 정도를 설명함 / 하: 시어·표현 설명이 없거나 틀림",
+    "상: 나만의 해석을 시 속 구절을 근거로 두 번 이상 뒷받침함 / 중: 해석은 있으나 근거가 하나이거나 약함 / 하: 해석이 없거나 근거가 없음",
+    "상: 작품의 한계나 다른 관점을 근거와 함께 평가하고 글을 고친 흔적이 있음 / 중: 평가가 있으나 근거가 약함 / 하: 비평이 없음",
+  ],
   rationale: "감상문의 핵심은 나만의 해석이라 해석에는 도토리를 적게 권하고, 혼자 알기 어려운 배경지식과 시어 뜻에 더 권했습니다.",
   createdAt: "2026-11-10T09:00:00+09:00",
   builtIn: true,
@@ -117,6 +123,7 @@ export function presetSuggestion(subject: string, grade: number, task: string): 
       shortItems: [...match.shortItems],
       itemGuides: match.itemGuides.map((g: ItemGuide) => ({ ...g })),
       reflectionQuestions: [...match.reflectionQuestions],
+      ...(match.criteria ? { criteria: [...match.criteria] } : {}),
       rationale: match.rationale,
       blockedExamples: ["이 과제 대신 써 줘", "내 문단을 자연스럽게 고쳐 줘"],
     };

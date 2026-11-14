@@ -58,8 +58,10 @@ export type ExamDef = ExamInfo & {
   closedClassIds?: string[];
   /** 교사가 올린 자료 (이름과 글자 수만 저장) */
   materials: { name: string; chars: number }[];
-  /** 🔄 기본 채점 단계 (없으면 상·중·하) */
-  grading?: { scale: GradeScale; max?: number };
+  /** 🔄 기본 채점 단계 (없으면 상·중·하). itemMax: 점수 채점일 때 항목별 배점 (없으면 모두 max) */
+  grading?: { scale: GradeScale; max?: number; itemMax?: number[] };
+  /** 🔄 11/14 평가 항목별 채점 기준 (예: "상: … / 중: … / 하: …"). 교사 전용, 학생 화면에 안 보냄 */
+  criteria?: string[];
   /** AI가 이 기준을 제안한 이유 */
   rationale: string;
   createdAt: string;
@@ -73,6 +75,8 @@ export type ExamSuggestion = {
   shortItems: string[];
   itemGuides: ItemGuide[];
   reflectionQuestions: string[];
+  /** 🔄 항목별 채점 기준 초안 */
+  criteria?: string[];
   rationale: string;
   blockedExamples: string[];
   materials: { name: string; chars: number }[];
@@ -174,6 +178,8 @@ export type Grade = {
   scale: GradeScale;
   /** 점수 채점일 때 항목별 만점 */
   max?: number;
+  /** 🔄 점수 채점일 때 항목별 배점 (있으면 max 대신) */
+  itemMax?: number[];
   /** 개요 항목별 값 (단계 이름 또는 점수). 아직 안 매기면 null */
   items: (string | number | null)[];
   /** "AI 활용" 항목을 켰을 때만 있음 */
@@ -183,6 +189,21 @@ export type Grade = {
   gradedAt: string;
 };
 export type GradeRequest = Omit<Grade, "gradedAt">;
+/** 🔄 11/14 AI 1차 채점: 교사가 정한 채점 기준만 보고 매긴 제안. 확정은 교사가 (Grade) */
+export type AiGrade = {
+  scale: GradeScale;
+  max?: number;
+  itemMax?: number[];
+  items: (string | number | null)[];
+  /** 항목별 이유 한 문장 (학생 글 근거) */
+  reasons: string[];
+  at: string;
+};
+// POST /api/report/:studentId/ai-grade (교사)
+export type AiGradeResponse = { aiGrade: AiGrade };
+// POST /api/report/class/accept-ai (교사): 확인할 점 없는 학생의 AI 제안을 교사 채점으로 확정
+export type AcceptAiRequest = { classId: string; examId: string };
+export type AcceptAiResponse = { accepted: string[]; skipped: { flagged: number; graded: number; noAi: number } };
 /** 학생 확인이 필요한 이유 (판정이 아니라 먼저 볼 학생 표시) */
 export type CheckFlag = { code: "paste" | "blocked" | "over" | "ai"; label: string };
 
@@ -213,7 +234,11 @@ export type StudentReportResponse = {
   /** 🔄 교사 채점 (아직 안 했으면 null) */
   grade: Grade | null;
   /** 이 수행평가의 기본 채점 단계 */
-  grading: { scale: GradeScale; max: number };
+  grading: { scale: GradeScale; max: number; itemMax?: number[] };
+  /** 🔄 항목별 채점 기준 (교사가 수행평가 만들 때 정함) */
+  criteria?: string[];
+  /** 🔄 AI 1차 채점 제안 (제출한 글이 그 뒤 바뀌지 않았을 때만) */
+  aiGrade: AiGrade | null;
   flags: CheckFlag[];
 };
 
@@ -237,6 +262,8 @@ export type ClassReportResponse = {
     /** 🔄 먼저 확인할 이유 */
     flags: CheckFlag[];
     grade: Grade | null;
+    /** 🔄 AI 1차 채점 제안이 있는지 */
+    aiGraded: boolean;
   }[];
   matrix: { stages: readonly Stage[]; types: readonly QuestionType[]; counts: number[][] };
   acornsByOutlineItem: { planned: PerItem; used: PerItem };

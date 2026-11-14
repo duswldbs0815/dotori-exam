@@ -49,7 +49,20 @@ export const POST = handle(async (req: Request) => {
       ? { passage: { title: str(b.passage.title, 80) || "지문", author: str(b.passage.author, 60) || undefined, body: str(b.passage.body, 8000), source: str(b.passage.source, 120) || undefined } }
       : {}),
     ...(b.grading && GRADE_SCALES.some((s) => s.id === b.grading?.scale)
-      ? { grading: { scale: b.grading.scale, ...(b.grading.scale === "points" ? { max: Math.max(1, Math.min(1000, Math.round(Number(b.grading.max) || DEFAULT_MAX))) } : {}) } }
+      ? {
+          grading: {
+            scale: b.grading.scale,
+            ...(b.grading.scale === "points" ? { max: Math.max(1, Math.min(1000, Math.round(Number(b.grading.max) || DEFAULT_MAX))) } : {}),
+            // 🔄 항목별 배점 (점수 채점일 때만)
+            ...(b.grading.scale === "points" && Array.isArray(b.grading.itemMax) && b.grading.itemMax.length === 4
+              ? { itemMax: b.grading.itemMax.map((m) => Math.max(1, Math.min(1000, Math.round(Number(m) || DEFAULT_MAX)))) }
+              : {}),
+          },
+        }
+      : {}),
+    // 🔄 항목별 채점 기준 (AI 1차 채점과 교사 채점 칸에서 씀)
+    ...(Array.isArray(b.criteria) && b.criteria.length === 4 && b.criteria.some((c) => str(c, 400))
+      ? { criteria: b.criteria.map((c) => str(c, 400)) }
       : {}),
   });
   const res: SaveExamResponse = { exam };

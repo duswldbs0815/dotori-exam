@@ -101,10 +101,11 @@ const SUGGEST_SYSTEM = `너는 중학교 교사가 수행평가를 준비하도�
 - 과제의 핵심 평가 요소(학생 스스로 해야 하는 판단)에는 도토리를 적게, 혼자 알기 어려운 지식·점검에는 많이 권한다.
 - 채점기준표가 있으면 그 평가 요소를 개요 항목과 이유에 반영한다.
 - 성찰 질문 4개: 계획과 실제 비교, 도움이 된 질문, AI 답 검증, 다음 계획.
+- criteria: 개요 항목마다 채점 기준 한 줄을 '상: … / 중: … / 하: …' 형식으로. 학생 글에서 확인할 수 있는 모습으로 쓴다. 채점기준표가 있으면 그 내용을 그대로 옮긴다.
 - 학생에게 쓸 말은 해요체, 교사에게 쓸 말(rationale)은 두 문장 이내.
 - 문자열 안에서 큰따옴표(")를 쓰지 말고 작은따옴표(')를 쓴다.
 JSON 형식 (itemGuides는 개요 항목 순서대로 정확히 4개):
-{"title":"","outlineItems":["","","",""],"shortItems":["","","",""],"itemGuides":[{"help":"","avoid":"","acorns":0},{"help":"","avoid":"","acorns":0},{"help":"","avoid":"","acorns":0},{"help":"","avoid":"","acorns":0}],"reflectionQuestions":["","","",""],"rationale":"","blockedExamples":["",""]}`;
+{"title":"","outlineItems":["","","",""],"shortItems":["","","",""],"itemGuides":[{"help":"","avoid":"","acorns":0},{"help":"","avoid":"","acorns":0},{"help":"","avoid":"","acorns":0},{"help":"","avoid":"","acorns":0}],"reflectionQuestions":["","","",""],"criteria":["","","",""],"rationale":"","blockedExamples":["",""]}`;
 
 const MAX_MATERIAL_CHARS = 12000;
 
@@ -167,6 +168,7 @@ export async function suggestExam(input: {
         acorns: Math.max(0, Math.min(5, Math.round(Number(g.acorns) || 0))),
       })),
       reflectionQuestions: out.reflectionQuestions,
+      ...(Array.isArray(out.criteria) && out.criteria.length === 4 ? { criteria: out.criteria.map((c) => String(c ?? "").slice(0, 400)) } : {}),
       rationale: String(out.rationale ?? ""),
       blockedExamples: Array.isArray(out.blockedExamples) ? out.blockedExamples.map(String).slice(0, 3) : [],
       materials,

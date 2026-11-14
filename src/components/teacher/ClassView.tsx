@@ -60,6 +60,39 @@ function ClassViewInner() {
     setNonce((n) => n + 1);
   };
 
+  // 🔄 11/14 AI 1차 채점 (반 전체): 제출한 학생 중 제안이 없는 학생만 하나씩 요청
+  const [aiRun, setAiRun] = useState<{ done: number; total: number } | null>(null);
+  const [aiMsg, setAiMsg] = useState<string | null>(null);
+  const runAi = async () => {
+    const todo = (data?.students ?? []).filter((r) => r.submitted && !r.aiGraded);
+    if (!todo.length) return;
+    setAiMsg(null);
+    let fail = 0;
+    for (let i = 0; i < todo.length; i++) {
+      setAiRun({ done: i, total: todo.length });
+      await api.aiGrade(todo[i].attemptId).catch(() => fail++);
+    }
+    setAiRun(null);
+    setAiMsg(fail ? `${todo.length - fail}명 완료, ${fail}명은 받지 못했어요. 다시 눌러 주세요.` : `${todo.length}명 AI 1차 채점 완료. 학생마다 제안을 확인해 주세요.`);
+    load();
+  };
+  const acceptAi = async () => {
+    if (!examId) return;
+    const ok = window.confirm(
+      "확인할 점이 없는 학생은 AI 제안을 그대로 선생님 채점으로 확정해요.\n" +
+        "확인할 점이 있는 학생과 이미 채점한 학생은 건너뛰니 직접 확인해 주세요.\n" +
+        "확정한 점수의 책임은 선생님께 있어요. 언제든 학생 리포트에서 고칠 수 있어요. 확정할까요?",
+    );
+    if (!ok) return;
+    try {
+      const r = await api.acceptAi({ classId, examId });
+      setAiMsg(`${r.accepted.length}명 확정 · 직접 확인할 학생 ${r.skipped.flagged}명 · 이미 채점 ${r.skipped.graded}명${r.skipped.noAi ? ` · AI 제안 없음 ${r.skipped.noAi}명` : ""}`);
+      load();
+    } catch (e) {
+      setAiMsg(e instanceof ApiError ? e.message : "확정하지 못했어요.");
+    }
+  };
+
   const list = data?.students ?? [];
   const recTotal = (data?.exam?.itemGuides ?? []).reduce((a, g) => a + g.acorns, 0) ?? 0; // 선생님 권장 질문 수 합
   const submitted = list.filter((r) => r.submitted).length;
@@ -167,6 +200,33 @@ function ClassViewInner() {
             </button>
           </div>
         </div>
+        {data !== null && examId && list.some((r) => r.submitted) && (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-leaf/25 bg-leaf-bg/50 px-4 py-3 text-[13px]">
+            <span className="mr-auto flex flex-col gap-0.5">
+              <b className="text-ink">AI 1차 채점 → 선생님 확정</b>
+              <span className="text-muted">
+                AI는 채점 기준만 보고 제안해요 (제안 {list.filter((r) => r.aiGraded).length} / 제출 {list.filter((r) => r.submitted).length}). 확인할 점(●)이 있는 학생은 과정을 보고 직접 정해 주세요.
+              </span>
+            </span>
+            <button
+              type="button"
+              disabled={!!aiRun || !list.some((r) => r.submitted && !r.aiGraded)}
+              onClick={() => void runAi()}
+              className="min-h-[38px] cursor-pointer rounded-full border-0 bg-leaf px-3.5 text-[13px] font-bold text-white disabled:cursor-default disabled:opacity-50"
+            >
+              {aiRun ? `AI 채점 중 ${aiRun.done} / ${aiRun.total}` : "제출한 학생 AI 1차 채점"}
+            </button>
+            <button
+              type="button"
+              disabled={!!aiRun || !list.some((r) => r.aiGraded && !r.grade && r.flags.length === 0)}
+              onClick={() => void acceptAi()}
+              className="min-h-[38px] cursor-pointer rounded-full border border-leaf bg-white px-3.5 text-[13px] font-bold text-leaf disabled:cursor-default disabled:opacity-50"
+            >
+              확인할 점 없는 학생 확정
+            </button>
+            {aiMsg && <span className="w-full font-bold text-sub">{aiMsg}</span>}
+          </div>
+        )}
         {data === null ? (
           <Loading />
         ) : shown.length === 0 ? (
@@ -213,6 +273,8 @@ function ClassViewInner() {
                           <span className="text-[13px] font-bold text-leaf">{r.grade!.items.join(" · ")}</span>
                         ) : r.grade ? (
                           <span className="text-[13px] text-leaf">채점 중</span>
+                        ) : r.aiGraded ? (
+                          <span className="rounded-full bg-cream-2 px-2 py-0.5 text-[12px] text-sub">AI 제안 · 확인 전</span>
                         ) : (
                           <span className="text-[13px] text-faint">—</span>
                         )}

@@ -1,6 +1,6 @@
 import { requireSubject, requireTeacher } from "@/lib/auth";
 import { examOf } from "@/lib/exams";
-import { DEFAULT_MAX, GRADE_SCALES, validValue } from "@/lib/grading";
+import { DEFAULT_MAX, GRADE_SCALES, maxOf, validValue } from "@/lib/grading";
 import { fail, handle, nowIso, readJson } from "@/lib/http";
 import { isValidId, updateAttempt } from "@/lib/store";
 import type { Grade, GradeRequest } from "@/lib/types";
@@ -15,7 +15,12 @@ export const POST = handle(async (req: Request, ctx: RouteContext<"/api/report/[
   const max = body.scale === "points" ? Number(body.max ?? DEFAULT_MAX) : undefined;
   if (max !== undefined && !(Number.isInteger(max) && max >= 1 && max <= 1000)) fail(400, "만점은 1~1000 사이 정수여야 해요.");
   if (!Array.isArray(body.items)) fail(400, "항목 점수가 필요해요.");
-  if (![...body.items, ...(body.ai !== undefined ? [body.ai] : [])].every((v) => validValue(body.scale, max ?? 0, v)))
+  const itemMax =
+    body.scale === "points" && Array.isArray(body.itemMax) && body.itemMax.length === body.items.length && body.itemMax.every((m) => Number.isInteger(m) && m >= 1 && m <= 1000)
+      ? body.itemMax
+      : undefined;
+  const lim = { max, itemMax };
+  if (!body.items.every((v, i) => validValue(body.scale, maxOf(lim, i), v)) || (body.ai !== undefined && !validValue(body.scale, max ?? 0, body.ai)))
     fail(400, "채점 값이 단계와 맞지 않아요.");
   const comment = typeof body.comment === "string" ? body.comment.trim().slice(0, 500) : "";
 
@@ -27,6 +32,7 @@ export const POST = handle(async (req: Request, ctx: RouteContext<"/api/report/[
     const g: Grade = {
       scale: body.scale,
       ...(max !== undefined ? { max } : {}),
+      ...(itemMax ? { itemMax } : {}),
       items: body.items,
       ...(body.ai !== undefined ? { ai: body.ai } : {}),
       comment,

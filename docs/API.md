@@ -391,13 +391,27 @@ AI가 자료와 채점기준표를 읽고 개요 4항목, 항목별 `itemGuides`
 타입은 `src/lib/types.ts`의 `Grade`, `GradeRequest`, `CheckFlag`, 단계 목록은 `src/lib/grading.ts`의 `GRADE_SCALES`.
 
 ### POST /api/report/:studentId/grade
-`{ scale: "3" | "5" | "pf" | "points", max?, items: (string|number|null)[], ai?, comment }`
+`{ scale: "3" | "5" | "pf" | "points", max?, itemMax?, items: (string|number|null)[], ai?, comment }`
 - `scale`: `3` 상·중·하 / `5` A~E / `pf` 통과·미통과 / `points` 점수 (`max` = 항목당 만점, 기본 25)
+- 🔄 `itemMax`: 항목별 배점 (점수일 때, `items`와 같은 길이). 있으면 항목 i의 만점은 `itemMax[i]`
 - `items`: 개요 항목 수만큼. 단계 이름 또는 점수, 아직 안 매겼으면 `null`
 - `ai`: 교사가 "AI 활용" 항목을 켰을 때만
 - `comment`: 나이스·세특에 옮길 평가 근거 한 줄 (500자)
 - 화면에서 누를 때마다 자동 저장. 응답 `{ grade }`
-- 학생 리포트 응답에 `grade`, `grading`(수행평가 기본 단계), `flags`(먼저 확인할 점)가 함께 옵니다.
+- 학생 리포트 응답에 `grade`, `grading`(수행평가 기본 단계, `itemMax?`), 🔄 `criteria?`(항목별 채점 기준), 🔄 `aiGrade`(AI 1차 채점 제안, 없으면 `null`), `flags`(먼저 확인할 점)가 함께 옵니다.
+
+### 🔄 POST /api/report/:studentId/ai-grade (11/14)
+AI 1차 채점. 본문 없음. 응답 `{ aiGrade: { scale, max?, itemMax?, items, reasons, at } }`
+- 교사가 정한 **채점 기준(`criteria`)만** 보고 제출한 글을 항목마다 채점한 **제안**. 항목마다 학생 글을 인용한 이유 한 문장(`reasons`)
+- AI 사용량·붙여넣기·차단 같은 과정 정보와 학생 이름·학번은 AI에 보내지 않음. 과정은 `flags`(숫자·사실)로만 보여 주고 판단은 교사가 함
+- 제출한 글이 있어야 함 (없으면 400). 같은 글·같은 채점 방식이면 저장해 둔 제안을 그대로 돌려줌 (AI 다시 안 부름). 글이 바뀌면 리포트의 `aiGrade`는 `null`
+- 교사 채점(`grade`)과 따로 저장. 화면에서 "적용"을 눌러야 교사 채점에 들어감
+
+### 🔄 POST /api/report/class/accept-ai (11/14)
+`{ classId, examId }` → `{ accepted: string[], skipped: { flagged, graded, noAi } }`
+- 확인할 점(`flags`)이 **없는** 학생 중 AI 제안이 있고 아직 교사 채점이 없는 학생만, AI 제안을 교사 채점으로 확정
+- 확인할 점이 있는 학생·이미 채점한 학생·제안이 없는 학생은 건너뜀 → 교사가 학생 리포트에서 직접 확인
+- 화면에서 "확정한 점수의 책임은 선생님께 있어요" 확인 창을 거침. 확정 후에도 학생 리포트에서 고칠 수 있음
 
 ### GET /api/report/class/csv?classId=&examId=
 반 채점표 CSV (엑셀에서 바로 열리게 UTF-8 BOM). 학번, 이름, 제출, 채점 단계, 항목별 값, (AI 활용), (합계), 평가 근거, 질문 수, 차단 수, 확인할 점.
@@ -410,4 +424,4 @@ AI가 자료와 채점기준표를 읽고 개요 4항목, 항목별 `itemGuides`
 | `over` | 🔄 선생님 권장 질문 수(항목별 권장 도토리 합)보다 질문 4개 이상 많음. 학생은 계획을 세우지 않으므로 계획 대신 권장 수와 비교 (예전 기록도 같은 기준). 수행평가를 정해 부를 때만 계산 |
 | `ai` | AI 답과 70% 이상 비슷한 문장 2개 이상 |
 
-수행평가를 만들 때 `POST /api/teacher/exams`에 `grading: { scale, max? }`를 넣으면 그 수행평가의 기본 채점 단계가 됩니다.
+수행평가를 만들 때 `POST /api/teacher/exams`에 `grading: { scale, max?, itemMax? }`를 넣으면 그 수행평가의 기본 채점 단계가 됩니다. 🔄 `criteria`(항목마다 채점 기준 한 줄, 400자, 4개)도 함께 넣으면 학생 리포트 채점 칸과 AI 1차 채점에 쓰입니다. AI 기준 제안(`suggest`)도 `criteria`를 채워 줍니다.
