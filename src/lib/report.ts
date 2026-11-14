@@ -128,18 +128,39 @@ function sentencePaths(rec: AttemptRecord, final: string): ReportSentence[] {
 }
 
 /** 한 번 저장에 이만큼 넘게 생기면 "한꺼번에 들어온 글"로 표시 (판정이 아니라 확인할 구간 표시) */
+/**
+ * 한 번 저장(10초 간격)에 이만큼 넘게 새 글이 생기면 "한꺼번에 들어온 글"로 표시.
+ * 사람이 10초 동안 칠 수 있는 건 많아야 20~30자라서, 쉬었다가 붙여 넣어도(저장 간격과 상관없이) 잡힘.
+ * 판정이 아니라 "먼저 볼 구간" 표시 (인터넷이 끊겼다 몰아서 저장된 경우도 잡힐 수 있음).
+ */
 const PASTE_CHARS = 80;
-const PASTE_WINDOW_MS = 20_000;
+
+/** 새로 들어온 글 중 원래 글에 이미 있던 부분의 비율 (6글자 단위로 비교). 옮기기·순서 바꾸기면 1에 가까움 */
+const OWN_TEXT_SHARE = 0.7;
+function ownTextShare(added: string, before: string): number {
+  const a = added.replace(/\s+/g, "");
+  const b = before.replace(/\s+/g, "");
+  if (a.length < 6 || !b) return 0;
+  let hit = 0;
+  let n = 0;
+  for (let i = 0; i + 6 <= a.length; i += 3) {
+    n++;
+    if (b.includes(a.slice(i, i + 6))) hit++;
+  }
+  return n ? hit / n : 0;
+}
 
 /** 타임랩스: 실제 저장 기록이 있으면 그걸, 없으면 질문 직전 글들과 최종 글로 만듦 */
 export function buildTimelapse(rec: AttemptRecord, final: string): Timelapse {
   const log = rec.draftLog ?? [];
   if (log.length) {
-    let prevT = Date.parse(rec.startedAt);
+    let text = ""; // 기록을 처음부터 다시 적용해 그 순간의 글을 복원
     const edits = log.map((e) => {
-      const now = Date.parse(e.t);
-      const paste = e.ins.length >= PASTE_CHARS && now - prevT <= PASTE_WINDOW_MS;
-      prevT = now;
+      const before = text;
+      text = text.slice(0, e.at) + e.ins + text.slice(e.at + e.del);
+      const added = e.ins.trim();
+      // 내 글 안에서 문단을 옮기거나 순서를 바꾼 경우(넣은 글이 원래 글에 거의 다 있었음)는 붙여넣기로 보지 않음
+      const paste = added.length >= PASTE_CHARS && ownTextShare(added, before) < OWN_TEXT_SHARE;
       return paste ? { ...e, paste } : e;
     });
     return { start: rec.startedAt, source: "log", edits };
