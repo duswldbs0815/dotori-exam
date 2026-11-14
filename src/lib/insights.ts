@@ -1,8 +1,8 @@
 // 서버 전용: 반 전체 "수업 단서" — 학생들의 질문을 AI가 묶고, 다음 수업에 쓸 제안을 붙임.
 // 학생 이름·학번은 AI에 보내지 않음. 숫자(몇 명, 몇 번)는 AI가 아니라 서버가 셈.
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { dbGet, dbPut, hasDb } from "./db";
+import { dbDeleteIds, dbGet, dbPut, hasDb } from "./db";
 import { callLLMJson } from "./llm";
 import type { AttemptRecord } from "./store";
 import type { ClassInsightsResponse, ExamDef, InsightCard } from "./types";
@@ -105,6 +105,17 @@ function warnDb(e: unknown) {
   if (dbWarned) return;
   dbWarned = true;
   console.warn(`수업 단서 저장소를 쓰지 못해 서버 메모리에만 둡니다 (supabase/insights.sql 실행 필요할 수 있음): ${(e as Error).message}`);
+}
+
+/** 저장된 수업 단서를 지움 (기록을 지울 때 같이) */
+export async function forgetInsights(key: string) {
+  memory.delete(key);
+  try {
+    if (hasDb()) await dbDeleteIds(TABLE, [key]);
+    else await rm(fileOf(key), { force: true });
+  } catch (e) {
+    warnDb(e);
+  }
 }
 
 // ── AI 정리 ───────────────────────────────────────────────

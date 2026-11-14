@@ -1,8 +1,8 @@
 // 서버 전용: 응시 기록 저장소.
 // Supabase 환경 변수가 있으면 dotori_attempts 표에, 없으면 로컬 JSON 파일(data/attempts/)에 저장합니다.
-import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { dbGet, dbGetVersioned, dbList, dbPut, dbSaveIfUnchanged, hasDb } from "./db";
+import { dbDeleteIds, dbGet, dbGetVersioned, dbList, dbPut, dbSaveIfUnchanged, hasDb } from "./db";
 import { DEFAULT_CLASS_ID, DEFAULT_EXAM_ID } from "./school";
 import type { Grade, Outline, OutlineItemNo, PerItem, QuestionType, ReportSentence, Reflection, Stage } from "./types";
 
@@ -194,6 +194,23 @@ export async function listAttemptsByStudent(studentId: string): Promise<AttemptR
     return rows.filter(mine);
   }
   return (await listAttempts()).filter(mine);
+}
+
+/** 응시 기록을 영구히 지움 (교사 "기록 지우기"). 지운 개수를 돌려줌 */
+export async function deleteAttempts(ids: string[]): Promise<number> {
+  const valid = ids.filter(isValidId);
+  if (!valid.length) return 0;
+  if (hasDb()) return dbDeleteIds(TABLE, valid);
+  let n = 0;
+  for (const id of valid) {
+    try {
+      await rm(fileOf(id));
+      n++;
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
+    }
+  }
+  return n;
 }
 
 /** 개요 항목별 사용한 도토리 수 (차감된 질문만) */

@@ -95,3 +95,20 @@ export async function dbSaveIfUnchanged<T>(
   });
   return ((await res.json()) as unknown[]).length === 1;
 }
+
+/** id 목록에 해당하는 줄을 지움. 지운 개수를 돌려줌 */
+export async function dbDeleteIds(table: string, ids: string[]): Promise<number> {
+  let n = 0;
+  for (let i = 0; i < ids.length; i += 100) {
+    // id는 영문·숫자·-·_ 만 쓰므로(isValidId) 따옴표 없이 그대로 넣음
+    const chunk = ids.slice(i, i + 100).filter((id) => /^[A-Za-z0-9_-]+$/.test(id)).join(",");
+    if (!chunk) continue;
+    const res = await rest(`${table}?id=in.(${chunk})`, {
+      method: "DELETE",
+      headers: { Prefer: "return=representation" },
+    });
+    n += ((await res.json()) as unknown[]).length;
+  }
+  return n;
+}
+

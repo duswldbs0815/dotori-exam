@@ -10,6 +10,7 @@ import { BackLink, card, ErrorBox, Loading } from "../ui";
 import { gradeDone } from "@/lib/grading";
 import { TeacherGate, TeacherShell } from "./TeacherShell";
 import { ClassInsights } from "./ClassInsights";
+import { DeleteRecords } from "./DeleteRecords";
 
 type Row = ClassReportResponse["students"][number];
 type Filter = "all" | "check" | "submitted" | "writing" | "ungraded";
@@ -230,6 +231,7 @@ function ClassViewInner() {
         )}
         <span className="text-xs text-muted">가상 학생 데이터만 사용해요.</span>
       </section>
+      {data && examId && <DeleteRecords classId={classId} examId={examId} examTitle={exam?.title ?? ""} count={list.length} onDone={load} />}
     </TeacherShell>
   );
 }

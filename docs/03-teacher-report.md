@@ -81,3 +81,8 @@
 - 교사팀 활동 순서의 마지막 단계 "다음 수업 재계획"을 교사 쪽에서 돕는 기능
 - API: `GET /api/report/class/insights` ([API.md](./API.md))
 
+## 6. 기록 정리 (🆕 11/14, 반 화면 맨 아래)
+- 학기 말에 한 반·한 수행평가의 학생 기록을 영구히 지움 (개인정보는 필요한 기간만 보관)
+- 지우기 전에 채점표 CSV 내려받기, 반 이름을 직접 입력해야 지워짐
+- API: `POST /api/report/class/delete`, `DELETE /api/report/:attemptId` ([API.md](./API.md))
+

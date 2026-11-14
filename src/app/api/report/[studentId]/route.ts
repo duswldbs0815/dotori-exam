@@ -1,10 +1,12 @@
 import { after } from "next/server";
 import { requireTeacher } from "@/lib/auth";
-import { fail, handle } from "@/lib/http";
+import { fail, handle, readJson } from "@/lib/http";
+import { forgetInsights } from "@/lib/insights";
+import { DEFAULT_CLASS_ID, DEFAULT_EXAM_ID } from "@/lib/school";
 import { judgeSentencePaths } from "@/lib/judge";
 import { examOf } from "@/lib/exams";
 import { buildStudentReport } from "@/lib/report";
-import { isValidId, loadAttempt } from "@/lib/store";
+import { deleteAttempts, isValidId, loadAttempt } from "@/lib/store";
 
 // 교사용 학생 리포트 (분류, 전후 비교, 작성 경로 포함)
 export const GET = handle(async (_req: Request, ctx: RouteContext<"/api/report/[studentId]">) => {
@@ -20,3 +22,20 @@ export const GET = handle(async (_req: Request, ctx: RouteContext<"/api/report/[
   }
   return Response.json(buildStudentReport(rec, await examOf(rec)));
 });
+
+// 교사용: 학생 한 명의 응시 기록을 영구히 지움 (전학, 응시 취소, 잘못 들어온 테스트 기록)
+// DELETE { confirm: "<학번 또는 응시 ID>" } — 실수 방지로 ID를 한 번 더 받음
+export const DELETE = handle(async (req: Request, ctx: RouteContext<"/api/report/[studentId]">) => {
+  await requireTeacher();
+  const { studentId } = await ctx.params;
+  if (!isValidId(studentId)) fail(400, "studentId가 올바르지 않아요.");
+  const b = await readJson<{ confirm?: string }>(req);
+  const rec = await loadAttempt(studentId);
+  if (!rec) fail(404, "응시 기록이 없어요.");
+  if (String(b.confirm ?? "").trim() !== studentId && String(b.confirm ?? "").trim() !== rec.student.id)
+    fail(400, `확인을 위해 학번 "${rec.student.id}"를 그대로 입력해 주세요.`);
+  const deleted = await deleteAttempts([studentId]);
+  await forgetInsights(`${rec.classId || DEFAULT_CLASS_ID}__${rec.examId || DEFAULT_EXAM_ID}`);
+  return Response.json({ ok: true, deleted });
+});
+
