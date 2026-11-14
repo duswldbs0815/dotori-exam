@@ -29,8 +29,8 @@ function Logo() {
   return (
     <Link href="/teacher" className="flex flex-col items-center gap-1 text-ink no-underline max-lg:flex-row max-lg:gap-2">
       <span className="relative inline-flex items-end">
-        <Squirrel size={46} />
-        <Acorn size={18} />
+        <Squirrel size={64} />
+        <Acorn size={22} />
       </span>
       <span className="font-display text-[22px] leading-none text-leaf">도토리 시험지</span>
     </Link>
