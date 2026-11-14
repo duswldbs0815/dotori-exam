@@ -11,7 +11,7 @@ const four = (a: unknown, max = 200) =>
 
 // 교사가 확정한 수행평가를 저장하고 반에 배포
 export const POST = handle(async (req: Request) => {
-  await requireTeacher();
+  const teacher = await requireTeacher();
   const b = await readJson<SaveExamRequest>(req);
   const title = str(b.title, 80);
   const subject = str(b.subject, 20);
@@ -21,6 +21,7 @@ export const POST = handle(async (req: Request) => {
   const classIds = Array.isArray(b.classIds) ? b.classIds.filter((c) => CLASS_IDS.includes(c)) : [];
   if (!title) fail(400, "수행평가 제목을 적어 주세요.");
   if (!SUBJECTS.includes(subject)) fail(400, "과목을 골라 주세요.");
+  if (subject !== teacher.subject) fail(403, `${teacher.subject} 수행평가만 만들 수 있어요.`);
   if (!GRADES.includes(b.grade)) fail(400, "학년을 골라 주세요.");
   if (!outlineItems || !shortItems) fail(400, "개요 항목 4개를 모두 채워 주세요.");
   if (!reflectionQuestions) fail(400, "성찰 질문 4개를 모두 채워 주세요.");

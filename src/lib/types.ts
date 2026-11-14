@@ -54,6 +54,8 @@ export type ExamDef = ExamInfo & {
   itemGuides: ItemGuide[];
   /** 배포한 반 ("2-3" 형식) */
   classIds: string[];
+  /** 🔄 11/14 배포한 반 중 마감한 반 (새로 시작 불가, 기록·채점은 그대로) */
+  closedClassIds?: string[];
   /** 교사가 올린 자료 (이름과 글자 수만 저장) */
   materials: { name: string; chars: number }[];
   /** 🔄 기본 채점 단계 (없으면 상·중·하) */
@@ -75,7 +77,7 @@ export type ExamSuggestion = {
   blockedExamples: string[];
   materials: { name: string; chars: number }[];
   /** ai: LLM이 만듦 / preset: AI 연결이 없어 과목별 예시를 보여 줌 */
-  source: "ai" | "preset";
+  source: "ai" | "preset" | "community";
 };
 // POST /api/teacher/exams
 export type SaveExamRequest = Omit<ExamDef, "id" | "createdAt" | "builtIn" | "acornPlanMaxPerItem" | "acornSafetyCap">;
@@ -83,8 +85,13 @@ export type SaveExamResponse = { exam: ExamDef };
 // GET /api/exams?classId=2-3 (학생 시작 화면)
 export type ClassExamsResponse = { exams: { id: string; title: string; subject: string; grade: number }[] };
 // GET /api/teacher/school (교사 홈)
+// POST /api/teacher/exams/classes (교사): 반 배포·마감
+export type ExamClassesRequest = { examId: string; classIds: string[]; closedClassIds: string[] };
+
 export type SchoolOverviewResponse = {
   school: string;
+  /** 로그인한 교사. exams·classes는 이 교사 과목 것만 */
+  teacher: TeacherAccount;
   exams: ExamDef[];
   classes: {
     classId: string;
@@ -211,8 +218,10 @@ export type StudentReportResponse = {
 };
 
 // 교사 로그인: POST /api/teacher/login, GET /api/teacher/me
-export type TeacherLoginRequest = { code: string };
-export type TeacherMeResponse = { teacher: boolean };
+export type TeacherLoginRequest = { id: string; password: string };
+/** 로그인한 교사 (과목 하나 담당) */
+export type TeacherAccount = { id: string; name: string; subject: string };
+export type TeacherMeResponse = { teacher: boolean; account?: TeacherAccount };
 
 // GET /api/report/class?classId=&examId= (교사용)
 export type ClassReportResponse = {

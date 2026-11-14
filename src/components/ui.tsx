@@ -4,7 +4,7 @@ import { Acorn } from "./Acorn";
 /** 버튼 모양 (와이어프레임 공통) */
 export const btn = {
   primary:
-    "inline-flex min-h-[52px] items-center justify-center gap-2 rounded-[18px] border-0 bg-brown px-[26px] font-display text-xl text-white no-underline cursor-pointer disabled:cursor-not-allowed disabled:bg-disabled disabled:text-faint",
+    "inline-flex min-h-[52px] items-center justify-center gap-2 rounded-[18px] border-0 bg-leaf px-[26px] font-display text-xl text-white no-underline cursor-pointer disabled:cursor-not-allowed disabled:bg-disabled disabled:text-faint",
   secondary:
     "inline-flex min-h-[52px] items-center justify-center rounded-[18px] border border-line-2 bg-white px-[22px] text-[15px] font-bold text-sub no-underline cursor-pointer disabled:cursor-not-allowed disabled:opacity-60",
   disabledBox:
@@ -52,9 +52,9 @@ export function StepNav({
       {STEPS.map((s, i) => {
         const on = s.key === current;
         const cls = on
-          ? "bg-brown font-bold text-white border-brown"
+          ? "bg-leaf font-bold text-white border-leaf"
           : done[s.key]
-            ? "bg-[#F3E6D3] text-sub border-[#F3E6D3]"
+            ? "bg-leaf-bg text-sub border-leaf-bg"
             : "bg-white text-sub border-line";
         return (
           <li key={s.key} className="flex items-center gap-2">
@@ -78,7 +78,7 @@ export function StepNav({
 
 export function BackLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <Link href={href} className="text-sm text-brown hover:text-[#5C300A]">
+    <Link href={href} className="text-sm text-leaf hover:text-leaf-2">
       {children}
     </Link>
   );

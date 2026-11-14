@@ -1,4 +1,4 @@
-import { requireTeacher } from "@/lib/auth";
+import { requireSubject, requireTeacher } from "@/lib/auth";
 import { getExam } from "@/lib/exams";
 import { GRADE_SCALES, pointsTotal } from "@/lib/grading";
 import { fail, handle } from "@/lib/http";
@@ -15,12 +15,13 @@ const cell = (v: unknown) => {
 
 // 반 채점표 내려받기 (나이스·학교 양식에 옮기기 쉬운 CSV, 엑셀에서 바로 열림)
 export const GET = handle(async (req: Request) => {
-  await requireTeacher();
+  const teacher = await requireTeacher();
   const url = new URL(req.url);
   const classId = url.searchParams.get("classId") ?? "";
   const examId = url.searchParams.get("examId") ?? "";
   if (!CLASS_IDS.includes(classId)) fail(400, "반을 골라 주세요.");
   const exam = await getExam(examId);
+  requireSubject(teacher, exam);
   const recs = (await listAttempts({ classId, examId: exam.id })).sort((a, b) => a.student.id.localeCompare(b.student.id));
   const labels = exam.shortItems ?? exam.outlineItems;
   const hasAi = recs.some((r) => r.grade?.ai !== undefined);

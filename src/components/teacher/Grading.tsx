@@ -204,7 +204,7 @@ export function Grading({ studentId, data, onSeek }: { studentId: string; data: 
           <li className="grid grid-cols-[150px_1fr_auto] items-center gap-4 border-t border-line py-3.5 max-md:grid-cols-1 max-md:gap-2">
             <span className="text-[15px] font-bold text-ink">AI 활용</span>
             <span className="text-[13px] text-muted">
-              질문 {data.questions.filter((q) => !q.blocked).length} · 차단 {data.blockedCount} · 계획 {data.acorns.totalPlanned} → 실제 {data.acorns.totalUsed}
+              질문 {data.questions.filter((q) => !q.blocked).length} · 차단 {data.blockedCount} {data.acorns.totalPlanned > 0 ? ` · 계획 ${data.acorns.totalPlanned} → 실제 ${data.acorns.totalUsed}` : ""}
             </span>
             <ValueControl
               v={ai}
@@ -219,7 +219,7 @@ export function Grading({ studentId, data, onSeek }: { studentId: string; data: 
           </li>
         )}
       </ol>
-      <button type="button" onClick={toggleAi} className="-mt-2 cursor-pointer self-start border-0 bg-transparent p-0 text-[13px] font-bold text-brown">
+      <button type="button" onClick={toggleAi} className="-mt-2 cursor-pointer self-start border-0 bg-transparent p-0 text-[13px] font-bold text-leaf">
         {ai === undefined ? "+ ‘AI 활용’ 항목 추가 (선택)" : "− ‘AI 활용’ 항목 빼기"}
       </button>
 
@@ -262,7 +262,7 @@ function ValueControl({ v, onPick, label, levels, max }: { v: Value; onPick: (v:
             role="radio"
             aria-checked={v === lv}
             onClick={() => onPick(v === lv ? null : lv)}
-            className={`min-h-10 min-w-11 cursor-pointer border-0 border-l border-line px-3 text-[15px] font-bold first:border-l-0 ${v === lv ? "bg-brown text-white" : "bg-white text-sub hover:bg-cream-3"}`}
+            className={`min-h-10 min-w-11 cursor-pointer border-0 border-l border-line px-3 text-[15px] font-bold first:border-l-0 ${v === lv ? "bg-leaf text-white" : "bg-white text-sub hover:bg-cream-3"}`}
           >
             {lv}
           </button>

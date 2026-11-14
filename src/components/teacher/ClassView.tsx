@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, ApiError, shortLabels } from "@/lib/api-client";
-import { classLabel, SCHOOL_NAME } from "@/lib/school";
+import { classLabel } from "@/lib/school";
 import type { ClassReportResponse, SchoolOverviewResponse } from "@/lib/types";
 import { BackLink, card, ErrorBox, Loading } from "../ui";
 import { gradeDone } from "@/lib/grading";
@@ -86,7 +86,7 @@ function ClassViewInner() {
 
   return (
     <TeacherShell>
-      <BackLink href="/teacher">← {SCHOOL_NAME} 전체</BackLink>
+      <BackLink href="/teacher/exams">← 수행평가 목록</BackLink>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-1">
           <span className="text-sm text-muted">
@@ -103,7 +103,7 @@ function ClassViewInner() {
                 role="tab"
                 aria-selected={e.id === examId}
                 onClick={() => router.replace(`/teacher/class/${classId}?exam=${e.id}`)}
-                className={`min-h-[38px] cursor-pointer rounded-full px-3.5 text-[13px] ${e.id === examId ? "border-0 bg-brown font-bold text-white" : "border border-line-3 bg-white text-brown-dark"}`}
+                className={`min-h-[38px] cursor-pointer rounded-full px-3.5 text-[13px] ${e.id === examId ? "border-0 bg-leaf font-bold text-white" : "border border-line-3 bg-white text-brown-dark"}`}
               >
                 {e.subject} · {e.title}
               </button>
@@ -193,17 +193,17 @@ function ClassViewInner() {
                     <tr key={r.attemptId} className="border-b border-dashed border-line last:border-0">
                       <td className="px-3 py-3 text-muted">{r.studentId}</td>
                       <td className="px-3 py-3 font-bold">
-                        <Link href={href} className="text-ink no-underline hover:text-brown">
+                        <Link href={href} className="text-ink no-underline hover:text-leaf">
                           {r.name}
                         </Link>
                       </td>
                       <td className="px-3 py-3">
-                        <span className={`rounded-full px-2.5 py-1 text-xs ${r.submitted ? "bg-leaf-bg text-leaf" : "bg-cream-2 text-brown"}`}>
+                        <span className={`rounded-full px-2.5 py-1 text-xs ${r.submitted ? "bg-leaf-bg text-leaf" : "bg-cream-2 text-leaf"}`}>
                           {r.submitted ? "제출" : "작성 중"}
                         </span>
                       </td>
                       <td className="px-3 py-3">
-                        <span className="font-display text-lg text-brown">{r.totalUsed}</span>
+                        <span className="font-display text-lg text-leaf">{r.totalUsed}</span>
                         <span className="text-muted"> / {r.totalPlanned}</span>
                       </td>
                       <td className={`px-3 py-3 ${r.blockedCount > 0 ? "font-bold text-alert" : "text-muted"}`}>{r.blockedCount}</td>
@@ -211,14 +211,14 @@ function ClassViewInner() {
                         {gradeDone(r.grade) ? (
                           <span className="text-[13px] font-bold text-leaf">{r.grade!.items.join(" · ")}</span>
                         ) : r.grade ? (
-                          <span className="text-[13px] text-brown">채점 중</span>
+                          <span className="text-[13px] text-leaf">채점 중</span>
                         ) : (
                           <span className="text-[13px] text-faint">—</span>
                         )}
                         {r.flags.length > 0 && <span className="ml-1.5 inline-block h-2 w-2 rounded-full bg-del align-middle" title={r.flags.map((f) => f.label).join(", ")} />}
                       </td>
                       <td className="px-3 py-3 text-right">
-                        <Link href={href} className="text-brown">
+                        <Link href={href} className="text-leaf">
                           보기 →
                         </Link>
                       </td>
@@ -246,6 +246,7 @@ export function ClassSummary({ data }: { data: ClassReportResponse }) {
   const blockedStudents = data.students.filter((s) => s.blockedCount > 0).length;
   const { planned, used } = data.acornsByOutlineItem;
   const itemMax = Math.max(1, ...planned, ...used);
+  const hasPlan = planned.some((v) => v > 0); // 🔄 11/14부터 학생은 계획을 세우지 않음 (예전 기록만 있음)
   const busiest = used.indexOf(Math.max(...used));
   const typeTotals = data.matrix.types.map((_, ti) => data.matrix.counts.reduce((a, row) => a + row[ti], 0));
   const typeSum = typeTotals.reduce((a, b) => a + b, 0);
@@ -262,7 +263,7 @@ export function ClassSummary({ data }: { data: ClassReportResponse }) {
       <div className="grid grid-cols-4 gap-3 max-md:grid-cols-2">
         {stats.map(([v, l, tone]) => (
           <div key={l} className={`${card} flex flex-col gap-1 px-5 py-4`}>
-            <span className={`font-display text-[32px] leading-none ${tone ?? "text-brown"}`}>{v}</span>
+            <span className={`font-display text-[32px] leading-none ${tone ?? "text-leaf"}`}>{v}</span>
             <span className="text-[13px] text-muted">{l}</span>
           </div>
         ))}
@@ -273,23 +274,23 @@ export function ClassSummary({ data }: { data: ClassReportResponse }) {
             <h2 className="m-0 font-display text-xl font-normal">어디서 질문이 많았나</h2>
             {used[busiest] > 0 && (
               <span className="text-[13px] text-sub">
-                가장 많이 물은 항목: <b className="text-brown">{SHORT_ITEMS[busiest]}</b>
+                가장 많이 물은 항목: <b className="text-leaf">{SHORT_ITEMS[busiest]}</b>
               </span>
             )}
           </div>
           {SHORT_ITEMS.map((label, i) => (
             <div key={label} className="flex items-center gap-3 text-sm">
               <span className="w-24 flex-none text-sub">{label}</span>
-              <div className="relative h-3.5 flex-1 rounded-full bg-[#F3E6D3]">
-                <div className="absolute inset-y-0 left-0 rounded-full border-2 border-dashed border-nut" style={{ width: `${(planned[i] / itemMax) * 100}%` }} />
-                <div className={`absolute inset-y-0.5 left-0 rounded-full ${i === busiest && used[i] > 0 ? "bg-brown" : "bg-nut"}`} style={{ width: `${(used[i] / itemMax) * 100}%` }} />
+              <div className="relative h-3.5 flex-1 rounded-full bg-leaf-bg">
+                {hasPlan && <div className="absolute inset-y-0 left-0 rounded-full border-2 border-dashed border-nut" style={{ width: `${(planned[i] / itemMax) * 100}%` }} />}
+                <div className={`absolute inset-y-0.5 left-0 rounded-full ${i === busiest && used[i] > 0 ? "bg-leaf" : "bg-nut"}`} style={{ width: `${(used[i] / itemMax) * 100}%` }} />
               </div>
               <span className="w-20 flex-none text-right text-xs text-muted">
-                {used[i]} / 목표 {planned[i]}
+                {hasPlan ? `${used[i]} / 목표 ${planned[i]}` : `${used[i]}번`}
               </span>
             </div>
           ))}
-          <span className="text-xs text-muted">채운 막대는 실제 질문, 점선은 학생들이 정한 목표의 합이에요. 수업에서 더 다룰 부분을 찾는 데 써 보세요.</span>
+          <span className="text-xs text-muted">{hasPlan ? "채운 막대는 실제 질문, 점선은 학생들이 정한 목표의 합이에요. " : ""}수업에서 더 다룰 부분을 찾는 데 써 보세요.</span>
         </div>
         <div className={`${card} flex min-w-0 flex-[1_1_320px] flex-col gap-3 p-6`}>
           <h2 className="m-0 font-display text-xl font-normal">어떤 질문을 했나</h2>
@@ -299,7 +300,7 @@ export function ClassSummary({ data }: { data: ClassReportResponse }) {
             data.matrix.types.map((t, i) => (
               <div key={t} className="flex items-center gap-3 text-sm">
                 <span className="w-28 flex-none text-sub">{t}</span>
-                <div className="h-3.5 flex-1 rounded-full bg-[#F3E6D3]">
+                <div className="h-3.5 flex-1 rounded-full bg-leaf-bg">
                   <div className={`h-3.5 rounded-full ${t === "대신 작성 요청" ? "bg-alert" : "bg-leaf"}`} style={{ width: `${(typeTotals[i] / typeSum) * 100}%` }} />
                 </div>
                 <span className="w-10 flex-none text-right text-xs text-muted">{typeTotals[i]}</span>

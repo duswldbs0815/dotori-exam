@@ -95,7 +95,7 @@ export function DeleteRecords({
                   type="button"
                   autoFocus
                   onClick={close}
-                  className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-[18px] border-0 bg-brown px-6 font-display text-xl text-white"
+                  className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-[18px] border-0 bg-leaf px-6 font-display text-xl text-white"
                 >
                   확인
                 </button>
@@ -123,7 +123,7 @@ export function DeleteRecords({
                     onChange={(e) => setTyped(e.target.value)}
                     autoFocus
                     placeholder={classId}
-                    className="min-h-11 rounded-xl border border-line-2 px-3 text-[15px] outline-none focus:border-brown"
+                    className="min-h-11 rounded-xl border border-line-2 px-3 text-[15px] outline-none focus:border-leaf"
                   />
                 </label>
                 {error && <p className="m-0 text-[13px] text-alert">{error}</p>}

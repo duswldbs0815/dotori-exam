@@ -22,7 +22,7 @@ async function textOf(file: File): Promise<string> {
 
 // 과목·과제·수업 자료를 읽고 AI가 수행평가 기준 초안을 제안 (multipart/form-data)
 export const POST = handle(async (req: Request) => {
-  await requireTeacher();
+  const teacher = await requireTeacher();
   let form: FormData;
   try {
     form = await req.formData();
@@ -33,6 +33,7 @@ export const POST = handle(async (req: Request) => {
   const grade = Number(form.get("grade"));
   const task = String(form.get("task") ?? "").trim().slice(0, 600);
   if (!SUBJECTS.includes(subject)) fail(400, "과목을 골라 주세요.");
+  if (subject !== teacher.subject) fail(403, `${teacher.subject} 수행평가만 만들 수 있어요.`);
   if (!GRADES.includes(grade)) fail(400, "학년을 골라 주세요.");
   if (!task) fail(400, "과제를 한두 문장으로 적어 주세요.");
 

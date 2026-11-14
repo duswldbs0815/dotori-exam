@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { BUILT_IN_EXAMS, SCHOOL_NAME } from "@/lib/school";
-import { Acorn } from "../Acorn";
 import { Squirrel } from "../Squirrel";
 import { Brand, btn } from "../ui";
 
@@ -168,7 +167,7 @@ function Nav() {
           <Link href="/teacher" className="rounded-full px-3.5 py-2 text-[15px] font-bold text-sub no-underline hover:bg-white max-sm:hidden">
             선생님
           </Link>
-          <Link href="/start" className="rounded-full bg-brown px-4 py-2 text-[15px] font-bold text-white no-underline transition hover:-translate-y-0.5">
+          <Link href="/start" className="rounded-full bg-leaf px-4 py-2 text-[15px] font-bold text-white no-underline transition hover:-translate-y-0.5">
             시험 시작
           </Link>
         </nav>
@@ -195,7 +194,7 @@ function Hero() {
       <div className="mx-auto grid max-w-[1180px] grid-cols-[1.25fr_1fr] items-center gap-10 max-md:grid-cols-1">
         <div className="flex flex-col gap-6">
           <Reveal>
-            <span className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3.5 py-1.5 text-[14px] font-bold text-brown">
+            <span className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3.5 py-1.5 text-[14px] font-bold text-leaf">
               <span className="h-2 w-2 animate-pulse rounded-full bg-leaf-2" /> AI 시대의 수행평가
             </span>
           </Reveal>
@@ -203,7 +202,7 @@ function Hero() {
             <h1 className="m-0 font-display text-[64px] leading-[1.12] font-normal text-ink max-lg:text-[52px] max-sm:text-[40px]">
               AI를 막지 말고,
               <br />
-              <span className="relative inline-block text-brown">
+              <span className="relative inline-block text-leaf">
                 쓰는 과정을
                 <span aria-hidden="true" className="absolute right-0 -bottom-1 left-0 -z-10 h-4 origin-left rounded-full bg-gold/40" style={{ animation: "land-underline 1s .7s both cubic-bezier(.2,.8,.2,1)" }} />
               </span>{" "}
@@ -212,7 +211,7 @@ function Hero() {
           </Reveal>
           <Reveal delay={160}>
             <p className="m-0 max-w-[560px] text-[18px] leading-relaxed text-sub max-sm:text-base">
-              학생은 시험지 안의 AI에게 <b className="text-brown">도토리 1개</b>씩 내고 질문해요. 선생님은 어디서 무엇을 물었는지,
+              학생은 시험지 안의 AI에게 <b className="text-leaf">도토리 1개</b>씩 내고 질문해요. 선생님은 어디서 무엇을 물었는지,
               질문 전후로 글이 어떻게 달라졌는지 리포트로 봐요.
             </p>
           </Reveal>
@@ -306,13 +305,13 @@ function HowItWorks() {
     <section className="px-6 py-24 max-sm:px-4 max-sm:py-16">
       <div className="mx-auto flex max-w-[1180px] flex-col gap-20 max-sm:gap-14">
         <Reveal className="flex flex-col items-center gap-3 text-center">
-          <span className="text-[14px] font-bold text-brown">어떻게 작동하나요</span>
+          <span className="text-[14px] font-bold text-leaf">어떻게 작동하나요</span>
           <h2 className="m-0 font-display text-[44px] leading-tight font-normal max-sm:text-[32px]">도토리 하나에 질문 하나</h2>
         </Reveal>
         <Step
           no={1}
-          title="먼저 계획해요"
-          text="학생은 AI 없이 개요를 쓰고, 항목마다 도토리를 몇 개 쓸지 스스로 정해요. 선생님이 권장한 개수도 함께 보여요."
+          title="선생님이 AI 기준을 정해요"
+          text="과제와 자료를 넣으면 AI가 항목마다 'AI에게 물어도 되는 것'과 '학생이 직접 할 것'을 제안해요. 다른 학교 선생님들의 사례를 가져와 고쳐 써도 돼요."
           demo={<PlanDemo />}
         />
         <Step
@@ -337,7 +336,7 @@ function Step({ no, title, text, demo, flip }: { no: number; title: string; text
   return (
     <div className="grid grid-cols-2 items-center gap-12 max-md:grid-cols-1 max-md:gap-6">
       <Reveal className={`flex flex-col gap-4 ${flip ? "md:order-2" : ""}`}>
-        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-brown font-display text-2xl text-white">{no}</span>
+        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-leaf font-display text-2xl text-white">{no}</span>
         <h3 className="m-0 font-display text-[34px] leading-tight font-normal max-sm:text-[28px]">{title}</h3>
         <p className="m-0 text-[17px] leading-relaxed text-sub">{text}</p>
       </Reveal>
@@ -371,28 +370,19 @@ function PlanDemo() {
   const mine = [2, 1, 3, 1];
   return (
     <div ref={ref}>
-      <DemoCard label="① 개요 · 도토리 계획">
+      <DemoCard label="① 선생님 · AI 활용 기준">
         <div className="flex flex-col gap-2.5">
           {KOR.shortItems?.map((label, i) => {
-            const rec = KOR.itemGuides?.[i]?.acorns ?? 0;
+            const g = KOR.itemGuides?.[i];
             return (
-              <div key={label} className="flex items-center gap-3 rounded-2xl bg-cream-3 px-4 py-3 max-sm:flex-wrap">
-                <span className="w-24 shrink-0 text-[15px] font-bold">{label}</span>
-                <span className="flex flex-1 gap-1">
-                  {Array.from({ length: 4 }, (_, k) => (
-                    <span
-                      key={k}
-                      style={{
-                        transform: show && k < mine[i] ? "scale(1)" : "scale(.6)",
-                        opacity: show && k < mine[i] ? 1 : 0.35,
-                        transition: `all .35s cubic-bezier(.3,1.6,.5,1) ${i * 260 + k * 110}ms`,
-                      }}
-                    >
-                      <Acorn size={20} ghost={!(show && k < mine[i])} />
-                    </span>
-                  ))}
-                </span>
-                <span className="text-[12px] text-muted">선생님 권장 {rec}개</span>
+              <div
+                key={label}
+                className="flex flex-col gap-1 rounded-2xl bg-cream-3 px-4 py-3"
+                style={{ opacity: show ? 1 : 0.3, transform: show ? "none" : "translateY(6px)", transition: `all .45s ease ${i * mine[i] * 120}ms` }}
+              >
+                <span className="text-[15px] font-bold">{label}</span>
+                <span className="text-[13px] text-leaf">AI에게 물어도 돼요 · {g?.help}</span>
+                <span className="text-[13px] text-muted">학생이 직접 · {g?.avoid}</span>
               </div>
             );
           })}
@@ -409,20 +399,18 @@ const Q_BAD = "에세이 전체를 대신 써 줘";
 function AskDemo() {
   const [ref, inView] = useInView<HTMLDivElement>(0.5);
   const [eats, setEats] = useState(0);
-  const [left, setLeft] = useState(6);
   const [round, setRound] = useState(0);
   // 0 글 · 1 문장 선택+질문 · 2 도토리 냠 · 3 답 · 4 대신 써 줘 · 5 차단
   const phase = usePhases(inView, [900, 1300, 1500, 3400, 1300, 2600], (p) => {
     if (p === 2) {
       setEats((n) => n + 1);
-      setLeft((n) => (n <= 1 ? 6 : n - 1));
     }
     if (p === 0) setRound((r) => r + 1);
   });
   const picked = phase >= 1;
   return (
     <div ref={ref}>
-      <DemoCard label="② 글쓰기 · AI에게 질문">
+      <DemoCard label="② 학생 · 수행평가와 AI 질문">
         <div className="grid grid-cols-[1fr_auto] gap-4 max-sm:grid-cols-1">
           <div className="flex min-h-[260px] flex-col gap-3">
             <p className="m-0 rounded-2xl border border-line bg-paper px-4 py-3 text-[15px] leading-relaxed">
@@ -455,8 +443,8 @@ function AskDemo() {
           <div className="flex flex-col items-center justify-start gap-2 rounded-2xl bg-cream-2 px-4 py-4 max-sm:flex-row max-sm:justify-between">
             <Squirrel size={84} eats={eats} />
             <div className="flex flex-col items-center gap-1">
-              <span className="text-[12px] text-muted">남은 도토리</span>
-              <span className="font-display text-3xl text-brown">{left}</span>
+              <span className="text-[12px] text-muted">질문한 횟수</span>
+              <span className="font-display text-3xl text-leaf">{eats}</span>
             </div>
           </div>
         </div>
@@ -468,7 +456,7 @@ function AskDemo() {
 function Bubble({ side, children }: { side: "me" | "ai"; children: React.ReactNode }) {
   return (
     <div
-      className={`max-w-[92%] rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed ${side === "me" ? "self-end rounded-br-md bg-brown text-white" : "self-start rounded-bl-md bg-leaf-bg text-leaf"}`}
+      className={`max-w-[92%] rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed ${side === "me" ? "self-end rounded-br-md bg-leaf text-white" : "self-start rounded-bl-md bg-leaf-bg text-leaf"}`}
       style={{ animation: "land-pop .35s cubic-bezier(.3,1.6,.5,1) both" }}
     >
       {side === "ai" && <b className="mr-1">AI</b>}
@@ -544,7 +532,7 @@ function ForTeachers() {
     <section className="bg-cream-2 px-6 py-24 max-sm:px-4 max-sm:py-16">
       <div className="mx-auto grid max-w-[1180px] grid-cols-[1fr_1.15fr] items-center gap-12 max-md:grid-cols-1">
         <Reveal className="flex flex-col gap-4">
-          <span className="text-[14px] font-bold text-brown">선생님을 위해</span>
+          <span className="text-[14px] font-bold text-leaf">선생님을 위해</span>
           <h2 className="m-0 font-display text-[44px] leading-tight font-normal max-sm:text-[32px]">
             과목마다 다른 AI 기준,
             <br />
@@ -632,7 +620,7 @@ function Enter() {
       href: "/teacher",
       who: "선생님",
       title: "교사 화면 들어가기",
-      text: "교사 코드로 들어가요. 학교 전체 현황, 반별 리포트, 새 수행평가 만들기.",
+      text: "담당 과목 교사 계정으로 들어가요. 우리 반 과정 요약, 반별 리포트, 새 수행평가 만들기.",
       cta: "교사 화면 →",
       dark: true,
     },
@@ -651,11 +639,11 @@ function Enter() {
                 className={`group relative flex min-h-[240px] flex-col justify-between gap-6 overflow-hidden rounded-[28px] p-8 no-underline transition duration-300 hover:-translate-y-1.5 max-sm:p-6 ${c.dark ? "bg-ink text-white hover:shadow-[0_24px_50px_-24px_rgba(58,42,28,.8)]" : "border border-line bg-white text-ink hover:shadow-[0_24px_50px_-24px_rgba(138,75,18,.5)]"}`}
               >
                 <div className="flex flex-col gap-2">
-                  <span className={`text-[14px] font-bold ${c.dark ? "text-[#F6D7B3]" : "text-brown"}`}>{c.who}</span>
+                  <span className={`text-[14px] font-bold ${c.dark ? "text-[#F6D7B3]" : "text-leaf"}`}>{c.who}</span>
                   <span className="font-display text-[32px] leading-tight">{c.title}</span>
                   <span className={`max-w-[420px] text-[16px] leading-relaxed ${c.dark ? "text-white/80" : "text-sub"}`}>{c.text}</span>
                 </div>
-                <span className={`font-display text-xl transition group-hover:translate-x-1 ${c.dark ? "text-[#F6D7B3]" : "text-brown"}`}>{c.cta}</span>
+                <span className={`font-display text-xl transition group-hover:translate-x-1 ${c.dark ? "text-[#F6D7B3]" : "text-leaf"}`}>{c.cta}</span>
               </Link>
             </Reveal>
           ))}

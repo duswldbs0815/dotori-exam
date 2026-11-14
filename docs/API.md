@@ -32,10 +32,9 @@
 | 단계 | 학생 화면 | 호출 |
 |---|---|---|
 | 시작 | 본인 확인(페이스페이 모의) + 기록 안내 | `POST /api/exam/start` |
-| ① 개요 | 4항목 입력 + 항목별 도토리 계획 | `POST /api/outline` |
-| ② 글쓰기 | 10초마다 자동 저장 | `POST /api/draft` |
-| ② 글쓰기 | 드래그 → 항목 선택 → 도토리 확인 → 질문 | `POST /api/ask` |
-| ③ 성찰지 | 항목별 계획 vs 실제 도토리 그래프 + 성찰 4문항 | `GET /api/attempt/:attemptId`, `POST /api/submit` |
+| 🔄 수행평가 탭 | 과제·지문 + 내 글, 10초마다 자동 저장 → 제출 | `POST /api/draft`, `POST /api/submit` (`reflection: ["","","",""]`) |
+| 🔄 AI 질문 탭 | 드래그(선택) → 항목 고르기 → 질문 (확인 창 없음) | `POST /api/ask` |
+| (예전) ① 개요 | 🔄 11/14 학생 화면에서 없앰. API는 예전 기록 호환용으로 남음 | `POST /api/outline` |
 | 새로고침 | 상태 복원 | `GET /api/attempt/:attemptId` |
 | 교사 | 학생 리포트 | `GET /api/report/:studentId` |
 | 교사 | 반 전체 (P2) | `GET /api/report/class` |
@@ -107,7 +106,7 @@
 ```
 
 ## POST /api/ask
-질문 하나를 처리합니다. 프론트는 "도토리 1개를 사용할까요?" 확인을 받은 뒤 부릅니다. 목표를 넘겼는지와 상관없이 같은 확인 하나만 씁니다.
+질문 하나를 처리합니다. 🔄 11/14: 확인 창 없이 바로 부르고, 개요·도토리 계획이 없어도 됩니다 (예전엔 409). `overPlan`은 예전처럼 계획이 있는 기록에서만 true가 될 수 있습니다.
 
 서버 처리 순서: 대신 작성 요청인지 판별 → 차단이면 되묻기 답(도토리 사용 안 함) → 아니면 답변 생성 (글을 대신 써 주지 않도록 지시) → 질문 분류 → 질문 직전 글 저장 → 그 항목의 사용 수 +1 (목표를 넘겼으면 `overPlan: true`로 기록만 함)
 
@@ -202,17 +201,20 @@
 
 ---
 
-## 교사 로그인 (해커톤용 간이 인증)
-리포트 API 2개(`/api/report/...`)는 **교사 로그인 쿠키가 있어야** 응답합니다. 없으면 HTTP 401 `{ "error": "교사 코드로 로그인해 주세요." }`. 학생은 학번·이름으로만 시작하고 로그인이 없습니다. 실제 도입 시에는 슈퍼스쿨 계정 로그인으로 바꿉니다.
+## 교사 로그인 (🔄 11/14: 과목 담당 교사 계정)
+교사 API(`/api/teacher/...`, `/api/report/...`)는 **교사 로그인 쿠키가 있어야** 응답합니다. 없으면 HTTP 401 `{ "error": "교사 계정으로 로그인해 주세요." }`. 학생은 학번·이름으로만 시작하고 로그인이 없습니다. 실제 도입 시에는 슈퍼스쿨 계정 로그인으로 바꿉니다.
+
+- 교사 한 명 = 과목 하나. 계정은 가상 교사 4명(국어·과학·사회·영어)으로 `src/lib/teachers.ts`에 있고, 비밀번호는 scrypt 해시만 둡니다. 시연 비밀번호는 팀 안에서만 공유합니다.
+- 🔄 **담당 과목만 보기**: 교사 홈·반 리포트·학생 리포트·채점·CSV·수업 단서는 로그인한 교사 과목의 수행평가만 돌려줍니다. 다른 과목 기록은 HTTP 404 (있는지 없는지도 숨김). 수행평가 만들기·AI 기준 제안도 담당 과목만 (다른 과목이면 403).
+- `GET /api/teacher/school`은 담당 과목 수행평가와 그 반들만, 그리고 `teacher` `{ id, name, subject }`를 함께 돌려줍니다.
 
 | API | 용도 |
 |---|---|
-| `POST /api/teacher/login` `{ "code": "교사 코드" }` | 맞으면 `{ "ok": true }` + 로그인 쿠키(12시간). 틀리면 401. 🔄 **5번 틀리면 5분 잠금** → HTTP 429 `{ "error": "교사 코드를 여러 번 틀렸어요. N분 뒤에 다시 시도해 주세요." }` |
-| `GET /api/teacher/me` | `{ "teacher": true/false }`. 교사 화면 첫 진입 때 로그인 창을 띄울지 판단 |
+| `POST /api/teacher/login` `{ "id": "kor@dotori.school", "password": "…" }` | 맞으면 `{ "teacher": true, "account": { id, name, subject } }` + 로그인 쿠키(12시간). 틀리면 401 `{ "error": "아이디나 비밀번호가 맞지 않아요." }`. 🔄 **5번 틀리면 5분 잠금** → HTTP 429 |
+| `GET /api/teacher/me` | `{ "teacher": true, "account": {…} }` 또는 `{ "teacher": false }` |
 | `POST /api/teacher/logout` | 로그아웃 |
-| `GET /api/teacher/enter?code=…&next=/teacher` | 슈퍼스쿨 "바로가기" 링크용. 코드가 맞으면 로그인 후 `next` 주소로 이동, 틀리면 `next?login=failed`, 잠겨 있으면 `next?login=locked`로 이동 |
 
-- 교사 코드는 `.env.local`의 `TEACHER_CODE`에 있습니다.
+- 🔄 11/14: 교사 코드 하나로 들어가던 방식과 `GET /api/teacher/enter`(코드 바로가기 링크)는 없앴습니다. `.env.local`의 `TEACHER_CODE`는 이제 로그인 쿠키 서명용 서버 비밀값으로만 씁니다.
 - 🔄 로그인 쿠키 안에 만료 시각이 들어 있어서 12시간이 지나면 서버가 받아 주지 않습니다 (쿠키가 새어 나가도 계속 쓸 수 없음).
 - 🔄 마이페이지 로그인(`POST /api/me/login`)도 같은 곳에서 **같은 학번으로** 5번 틀리면 5분 잠금 → HTTP 429. 학교처럼 IP를 같이 써도 그 학번만 잠깁니다.
 - 🔄 `GET /api/health/llm`(AI 연결 확인)은 교사 로그인 후에만 열립니다. `GET /api/health/storage`는 누구나.
@@ -357,6 +359,10 @@
 ### POST /api/teacher/exams/suggest (교사)
 `multipart/form-data`: `subject`, `grade`, `task`(필수), `unit`, `notes`, `pasted`(붙여 넣은 자료), `files`(PDF·TXT·MD, 5개, 모두 합쳐 4MB까지).
 AI가 자료와 채점기준표를 읽고 개요 4항목, 항목별 `itemGuides`(`help` AI가 도와도 되는 일 / `avoid` 하지 않을 일 / `acorns` 권장 도토리), 성찰 질문, 제안 이유를 돌려줍니다 (`ExamSuggestion`). AI 연결이 없거나 실패하면 같은 과목 예시로 대신하고 `source: "preset"`.
+
+### 🔄 POST /api/teacher/exams/classes (교사)
+
+`{ "examId": "kor2", "classIds": ["2-1","2-2"], "closedClassIds": ["2-2"] }` → `{ classIds, closedClassIds }`. 담당 과목 수행평가만 (아니면 404). `classIds`는 배포한 반(하나 이상), `closedClassIds`는 그중 마감한 반. 마감한 반은 `GET /api/exams` 목록에서 빠지고 `exam/start`로 **새로** 시작할 수 없음 (HTTP 403 "선생님이 이 반 수행평가를 마감했어요."). 기록·채점은 그대로. 설정은 `dotori_exams` 표에 `cls__시험ID` 줄로 저장 (기본 제공 수행평가도 바꿀 수 있게).
 
 ### POST /api/teacher/exams (교사)
 `SaveExamRequest`(제안을 교사가 고친 값 + `classIds`)를 저장하고 바로 배포. 응답 `{ exam: ExamDef }`, 새 ID는 `t` + 6자리.

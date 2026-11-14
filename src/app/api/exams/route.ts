@@ -1,5 +1,5 @@
 import { fail, handle } from "@/lib/http";
-import { listExams } from "@/lib/exams";
+import { isClosed, listExams } from "@/lib/exams";
 import { CLASS_IDS } from "@/lib/school";
 import type { ClassExamsResponse } from "@/lib/types";
 
@@ -7,7 +7,7 @@ import type { ClassExamsResponse } from "@/lib/types";
 export const GET = handle(async (req: Request) => {
   const classId = new URL(req.url).searchParams.get("classId") ?? "";
   if (!CLASS_IDS.includes(classId)) fail(400, "학년과 반을 골라 주세요.");
-  const exams = (await listExams()).filter((e) => e.classIds.includes(classId));
+  const exams = (await listExams()).filter((e) => e.classIds.includes(classId) && !isClosed(e, classId));
   const res: ClassExamsResponse = {
     exams: exams.map((e) => ({ id: e.id, title: e.title, subject: e.subject, grade: e.grade })),
   };

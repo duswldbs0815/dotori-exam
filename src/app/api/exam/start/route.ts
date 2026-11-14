@@ -1,5 +1,5 @@
 import { newStudentKey, setMeCookie, setStudentCookie } from "@/lib/auth";
-import { attemptIdFor, getExam } from "@/lib/exams";
+import { attemptIdFor, getExam, isClosed } from "@/lib/exams";
 import { CLASS_IDS, toStudentExam } from "@/lib/school";
 import { MAX, checkLength } from "@/lib/limits";
 import { fail, handle, nowIso, readJson } from "@/lib/http";
@@ -28,6 +28,7 @@ export const POST = handle(async (req: Request) => {
       if (rec.student.name !== name) fail(409, "학번과 이름이 맞지 않아요. 다시 확인해 주세요.");
       return { rec: { ...rec, keyHash, verified: rec.verified || Boolean(body.verified) }, result: null };
     }
+    if (classId && isClosed(exam, classId)) fail(403, "선생님이 이 반 수행평가를 마감했어요.");
     return {
       rec: {
         attemptId,

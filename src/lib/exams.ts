@@ -12,8 +12,13 @@ import { EXAM_CONFIG } from "./exam-config";
 
 const DIR = path.join(process.cwd(), "data", "exams");
 
-async function customExams(): Promise<ExamDef[]> {
-  if (hasDb()) return (await dbList<ExamDef>("dotori_exams")).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+/** 🔄 11/14 반별 배포·마감 설정. 기본 제공 수행평가도 바꿀 수 있게 수행평가 정의와 따로 저장 (같은 표, id "cls__시험ID") */
+type ClassSetting = { kind: "classes"; examId: string; classIds: string[]; closedClassIds: string[] };
+const CLS = "cls__";
+const isSetting = (x: unknown): x is ClassSetting => (x as ClassSetting)?.kind === "classes";
+
+async function rawRows(): Promise<unknown[]> {
+  if (hasDb()) return dbList<unknown>("dotori_exams");
   let names: string[] = [];
   try {
     names = await readdir(DIR);
@@ -21,19 +26,41 @@ async function customExams(): Promise<ExamDef[]> {
     if ((e as NodeJS.ErrnoException).code === "ENOENT") return [];
     throw e;
   }
-  const out: ExamDef[] = [];
+  const out: unknown[] = [];
   for (const n of names.filter((n) => n.endsWith(".json"))) {
     try {
-      out.push(JSON.parse(await readFile(path.join(DIR, n), "utf8")) as ExamDef);
+      out.push(JSON.parse(await readFile(path.join(DIR, n), "utf8")));
     } catch (e) {
       console.error("수행평가 파일을 읽지 못했어요", n, e);
     }
   }
-  return out.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  return out;
 }
 
+async function putRow(id: string, data: unknown) {
+  if (hasDb()) return dbPut("dotori_exams", id, data);
+  await mkdir(DIR, { recursive: true });
+  await writeFile(path.join(DIR, `${id}.json`), JSON.stringify(data, null, 2), "utf8");
+}
+
+/** 반 배포·마감 설정 저장 (classIds = 배포한 반, closedClassIds = 그중 마감한 반) */
+export async function saveClassSetting(examId: string, classIds: string[], closedClassIds: string[]) {
+  const s: ClassSetting = { kind: "classes", examId, classIds, closedClassIds: closedClassIds.filter((c) => classIds.includes(c)) };
+  await putRow(`${CLS}${examId}`, s);
+  return s;
+}
+
+/** 마감한 반인지 */
+export const isClosed = (e: ExamDef, classId: string) => !!e.closedClassIds?.includes(classId);
+
 export async function listExams(): Promise<ExamDef[]> {
-  return [...BUILT_IN_EXAMS, ...(await customExams())];
+  const rows = await rawRows();
+  const settings = new Map(rows.filter(isSetting).map((s) => [s.examId, s]));
+  const custom = rows.filter((r): r is ExamDef => !isSetting(r)).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  return [...BUILT_IN_EXAMS, ...custom].map((e) => {
+    const s = settings.get(e.id);
+    return s ? { ...e, classIds: s.classIds, closedClassIds: s.closedClassIds } : e;
+  });
 }
 
 export async function getExam(id: string | undefined | null): Promise<ExamDef> {
@@ -58,12 +85,7 @@ export async function saveExam(req: SaveExamRequest): Promise<ExamDef> {
     acornSafetyCap: EXAM_CONFIG.acornSafetyCap,
     createdAt: new Date().toISOString(),
   };
-  if (hasDb()) {
-    await dbPut("dotori_exams", id, exam);
-  } else {
-    await mkdir(DIR, { recursive: true });
-    await writeFile(path.join(DIR, `${id}.json`), JSON.stringify(exam, null, 2), "utf8");
-  }
+  await putRow(id, exam);
   return exam;
 }
 

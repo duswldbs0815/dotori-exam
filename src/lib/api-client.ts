@@ -21,7 +21,7 @@ import type {
   StartResponse,
   StudentReportResponse,
   SubmitResponse,
-  TeacherMeResponse, MeLoginRequest, MyPageResponse } from "./types";
+  TeacherMeResponse, MeLoginRequest, MyPageResponse, ExamClassesRequest } from "./types";
 
 export class ApiError extends Error {
   constructor(
@@ -66,7 +66,7 @@ export const api = {
     call<SubmitResponse>("/api/submit", { body: { attemptId, final, reflection } }),
 
   teacherMe: () => call<TeacherMeResponse>("/api/teacher/me"),
-  teacherLogin: (code: string) => call<OkResponse>("/api/teacher/login", { body: { code } }),
+  teacherLogin: (id: string, password: string) => call<TeacherMeResponse>("/api/teacher/login", { body: { id, password } }),
   teacherLogout: () => call<OkResponse>("/api/teacher/logout", { method: "POST", body: {} }),
   classReport: (q?: { classId?: string; examId?: string }) =>
     call<ClassReportResponse>(`/api/report/class?${new URLSearchParams(Object.entries(q ?? {}).filter(([, v]) => v) as [string, string][])}`),
@@ -75,6 +75,7 @@ export const api = {
   meLogout: () => call<{ ok: true }>("/api/me/logout", { method: "POST" }),
   classExams: (classId: string) => call<ClassExamsResponse>(`/api/exams?classId=${enc(classId)}`),
   school: () => call<SchoolOverviewResponse>("/api/teacher/school"),
+  examClasses: (body: ExamClassesRequest) => call<{ classIds: string[]; closedClassIds: string[] }>("/api/teacher/exams/classes", { body }),
   suggestExam: (form: FormData) => call<ExamSuggestion>("/api/teacher/exams/suggest", { body: form }),
   saveExam: (body: SaveExamRequest) => call<SaveExamResponse>("/api/teacher/exams", { body }),
   studentReport: (studentId: string) => call<StudentReportResponse>(`/api/report/${enc(studentId)}`),

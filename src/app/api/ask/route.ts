@@ -25,7 +25,7 @@ export const POST = handle(async (req: Request) => {
   if (!pre) fail(404, "응시 기록이 없어요.");
   await requireOwner(pre);
   if (pre.submittedAt) fail(409, "이미 제출한 시험이에요.");
-  if (!pre.outline || !pre.acornPlan) fail(409, "개요와 도토리 계획을 먼저 작성해 주세요.");
+  // 🔄 11/14: 개요·도토리 계획 단계를 없앰. 바로 질문 가능
   const exam = await examOf(pre);
   if (totalUsed(pre) >= exam.acornSafetyCap) fail(429, "이번 시험에서 질문할 수 있는 횟수를 모두 썼어요.");
 
@@ -34,15 +34,15 @@ export const POST = handle(async (req: Request) => {
   );
 
   const res = await updateAttempt<AskResponse>(body.attemptId, (rec) => {
-    if (!rec || !rec.acornPlan) fail(409, "응시 기록이 바뀌었어요. 다시 시도해 주세요.");
+    if (!rec) fail(409, "응시 기록이 바뀌었어요. 다시 시도해 주세요.");
     if (rec.submittedAt) fail(409, "이미 제출한 시험이에요.");
 
     const charged = !result.blocked;
     const used = usedPerItem(rec);
     if (charged) used[item - 1]++;
-    const planned = rec.acornPlan[item - 1];
+    const planned = rec.acornPlan?.[item - 1] ?? 0;
     const acornNo = charged ? totalUsed(rec) + 1 : null;
-    const overPlan = charged && used[item - 1] > planned;
+    const overPlan = charged && !!rec.acornPlan && used[item - 1] > planned;
 
     const q: QuestionRecord = {
       acornNo,

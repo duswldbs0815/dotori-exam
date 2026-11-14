@@ -1,4 +1,4 @@
-import { requireTeacher } from "@/lib/auth";
+import { requireSubject, requireTeacher } from "@/lib/auth";
 import { examOf } from "@/lib/exams";
 import { DEFAULT_MAX, GRADE_SCALES, validValue } from "@/lib/grading";
 import { fail, handle, nowIso, readJson } from "@/lib/http";
@@ -7,7 +7,7 @@ import type { Grade, GradeRequest } from "@/lib/types";
 
 // 교사 채점 저장 (항목별 단계·점수 + 평가 근거 한 줄). 화면에서 바꿀 때마다 저장
 export const POST = handle(async (req: Request, ctx: RouteContext<"/api/report/[studentId]/grade">) => {
-  await requireTeacher();
+  const teacher = await requireTeacher();
   const { studentId } = await ctx.params;
   if (!isValidId(studentId)) fail(400, "studentId가 올바르지 않아요.");
   const body = await readJson<GradeRequest>(req);
@@ -22,6 +22,7 @@ export const POST = handle(async (req: Request, ctx: RouteContext<"/api/report/[
   const grade = await updateAttempt(studentId, async (rec) => {
     if (!rec) fail(404, "응시 기록이 없어요.");
     const exam = await examOf(rec);
+    requireSubject(teacher, exam);
     if (body.items.length !== exam.outlineItems.length) fail(400, "항목 수가 맞지 않아요.");
     const g: Grade = {
       scale: body.scale,

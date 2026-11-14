@@ -76,7 +76,7 @@ export function ClassInsights({ classId, examId }: { classId: string; examId: st
                   className={`flex flex-col gap-2 rounded-2xl border px-4 py-3.5 ${c.blocked ? "border-alert-bg bg-alert-bg/40" : "border-line bg-paper"}`}
                 >
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className={`rounded-full px-2 py-0.5 text-[12px] font-bold ${c.blocked ? "bg-alert-bg text-alert" : "bg-cream-2 text-brown"}`}>
+                    <span className={`rounded-full px-2 py-0.5 text-[12px] font-bold ${c.blocked ? "bg-alert-bg text-alert" : "bg-cream-2 text-leaf"}`}>
                       {c.students}명 · 질문 {c.questions}개
                     </span>
                     {c.item && <span className="rounded-full border border-line px-2 py-0.5 text-[12px] text-sub">{c.item}</span>}

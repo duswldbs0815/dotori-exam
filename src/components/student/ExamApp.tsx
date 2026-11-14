@@ -5,17 +5,15 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, recallSession } from "@/lib/api-client";
 import type { AttemptStateResponse, ExamInfo, PerItem, StudentQuestion } from "@/lib/types";
-import { Brand, btn, card, ErrorBox, Loading, Pill, StepNav, type StepKey } from "../ui";
+import { Brand, btn, card, ErrorBox, Loading, Pill } from "../ui";
 import { DoneStep } from "./DoneStep";
-import { OutlineStep } from "./OutlineStep";
-import { ReflectStep } from "./ReflectStep";
 import { WriteStep } from "./WriteStep";
 
-type Step = StepKey | "done";
+type Step = "write" | "done";
 export type SaveState = { at: string | null; saving: boolean; error: string | null };
 export type DoneInfo = { submittedAt: string | null; chars: number; reflectionCount: number | null };
 
-/** 학생 시험지: 개요 → 글쓰기 → 성찰지 → 제출 완료 */
+/** 학생 시험지 (🔄 11/14 단순화): [수행평가 | AI 질문] 두 탭 → 제출 완료 */
 export function ExamApp() {
   const params = useParams<{ attemptId: string }>();
   const attemptId = decodeURIComponent(params.attemptId);
@@ -23,7 +21,7 @@ export function ExamApp() {
   const [exam, setExam] = useState<ExamInfo | null>(null);
   const [state, setState] = useState<AttemptStateResponse | null>(null);
   const [loadError, setLoadError] = useState<{ status: number; message: string } | null>(null);
-  const [step, setStep] = useState<Step>("outline");
+  const [step, setStep] = useState<Step>("write");
   const [draft, setDraft] = useState("");
   const [save, setSave] = useState<SaveState>({ at: null, saving: false, error: null });
   const [done, setDone] = useState<DoneInfo | null>(null);
@@ -46,7 +44,7 @@ export function ExamApp() {
         setExam(session.exam);
         setDraft(st.draft);
         savedText.current = st.draft;
-        setStep(st.submitted ? "done" : st.outline && st.acornPlan ? "write" : "outline");
+        setStep(st.submitted ? "done" : "write");
         if (st.submitted) setDone({ submittedAt: null, chars: st.draft.length, reflectionCount: null });
       } catch (e) {
         if (!alive) return;
@@ -116,10 +114,18 @@ export function ExamApp() {
   }
 
   const used = state.acornsUsed;
-  const go = async (s: StepKey) => {
-    if (step === "write") await saveDraft(draftRef.current);
-    setStep(s);
-    window.scrollTo({ top: 0 });
+  const submit = async () => {
+    setSave((x) => ({ ...x, error: null }));
+    try {
+      await saveDraft(draftRef.current, true);
+      const res = await api.submit(attemptId, draftRef.current, ["", "", "", ""]);
+      setState((st) => (st ? { ...st, submitted: true } : st));
+      setDone({ submittedAt: res.submittedAt, chars: draftRef.current.length, reflectionCount: null });
+      setStep("done");
+      window.scrollTo({ top: 0 });
+    } catch (e) {
+      setSave((x) => ({ ...x, error: e instanceof ApiError ? e.message : "제출하지 못했어요." }));
+    }
   };
 
   const onAsked = (q: StudentQuestion, item: number, usedNow: number, text: string) => {
@@ -137,14 +143,6 @@ export function ExamApp() {
       <header className="flex flex-wrap items-center justify-between gap-4">
         <Brand subtitle={exam.title} />
         <nav aria-label="응시 정보" className="flex flex-wrap items-center gap-2">
-          {step !== "done" && (
-            <StepNav
-              current={step}
-              done={{ outline: !!state.outline, write: step === "reflect" }}
-              disabled={{ write: !state.outline || !state.acornPlan, reflect: !state.outline || !state.acornPlan }}
-              onGo={(s) => void go(s)}
-            />
-          )}
           <span className="w-3" />
           <Pill>
             {name}
@@ -152,53 +150,19 @@ export function ExamApp() {
           </Pill>
         </nav>
       </header>
-      {save.error && step === "write" && <ErrorBox>글 자동 저장이 안 되고 있어요: {save.error}</ErrorBox>}
+      {save.error && step === "write" && <ErrorBox>{save.error}</ErrorBox>}
 
-      {step === "outline" && (
-        <OutlineStep
-          attemptId={attemptId}
-          exam={exam}
-          initialOutline={state.outline}
-          initialPlan={state.acornPlan}
-          used={used}
-          planLocked={state.questions.length > 0}
-          onSaved={(outline, plan) => {
-            setState((st) => (st ? { ...st, outline, acornPlan: plan } : st));
-            void go("write");
-          }}
-        />
-      )}
-      {step === "write" && state.outline && state.acornPlan && (
+      {step === "write" && (
         <WriteStep
           attemptId={attemptId}
           exam={exam}
-          plan={state.acornPlan}
           used={used}
           questions={state.questions}
           draft={draft}
           onDraft={setDraft}
           save={save}
           onAsked={onAsked}
-          onOutline={() => void go("outline")}
-          onReflect={() => void go("reflect")}
-        />
-      )}
-      {step === "reflect" && state.acornPlan && (
-        <ReflectStep
-          attemptId={attemptId}
-          exam={exam}
-          plan={state.acornPlan}
-          used={used}
-          questions={state.questions}
-          draft={draft}
-          saveDraft={saveDraft}
-          onBack={() => void go("write")}
-          onSubmitted={(info) => {
-            setState((st) => (st ? { ...st, submitted: true } : st));
-            setDone(info);
-            setStep("done");
-            window.scrollTo({ top: 0 });
-          }}
+          onSubmit={submit}
         />
       )}
       {step === "done" && <DoneStep name={name} used={used} info={done} />}

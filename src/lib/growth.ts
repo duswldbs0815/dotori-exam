@@ -29,7 +29,8 @@ export function pointsOf(a: MyAttempt): { total: number; parts: { label: string;
     parts.push({ label: "끝까지 써서 제출", pts: 30 });
     if (a.reflectionDone >= 4) parts.push({ label: "성찰지 4문항 모두 쓰기", pts: 10 });
     if (a.plan && a.used.every((u, i) => u <= a.plan![i] + 1)) parts.push({ label: "계획에 가깝게 질문하기", pts: 10 });
-    if (a.blockedCount === 0) parts.push({ label: "대신 써 달라는 요청 없이 끝내기", pts: 5 });
+    if (a.blockedCount === 0) parts.push({ label: "대신 써 달라는 요청 없이 끝내기", pts: 10 });
+    if (a.questionCount > 0 && a.blockedCount === 0) parts.push({ label: "AI에게 묻고 내 글로 끝내기", pts: 10 });
   }
   return { total: parts.reduce((s, p) => s + p.pts, 0), parts };
 }
@@ -43,7 +44,7 @@ export function growthOf(attempts: MyAttempt[]) {
   const badges = [
     { id: "first", name: "첫 제출", got: submitted.length >= 1, hint: "수행평가 하나를 제출해요" },
     { id: "curious", name: "질문 탐험가", got: attempts.reduce((s, a) => s + a.questionCount, 0) >= 10, hint: "질문을 모두 10번 해요" },
-    { id: "reflect", name: "돌아보기 달인", got: submitted.filter((a) => a.reflectionDone >= 4).length >= 2, hint: "성찰지 4문항을 두 번 모두 써요" },
+    { id: "steady", name: "꾸준한 작가", got: submitted.length >= 3, hint: "수행평가 세 개를 제출해요" },
     { id: "own", name: "내 손으로", got: submitted.filter((a) => a.blockedCount === 0).length >= 2, hint: "대신 써 달라는 요청 없이 두 번 제출해요" },
   ];
   return { points, level: cur, next, unlocked, badges };

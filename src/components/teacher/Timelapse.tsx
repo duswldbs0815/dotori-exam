@@ -201,7 +201,7 @@ export function Timelapse({ data, questions, ref }: { data: TL; questions: Repor
           type="button"
           onClick={play}
           aria-label={playing ? "멈춤" : "재생"}
-          className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-brown text-white"
+          className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-leaf text-white"
         >
           {playing ? (
             <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="2" y="1" width="3.5" height="12" rx="1" fill="currentColor" /><rect x="8.5" y="1" width="3.5" height="12" rx="1" fill="currentColor" /></svg>

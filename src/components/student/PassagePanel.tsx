@@ -19,7 +19,7 @@ export function PassagePanel({ exam, defaultOpen = true }: { exam: ExamInfo; def
         className="flex cursor-pointer items-center justify-between gap-2 border-0 bg-transparent p-0 text-left"
       >
         <span className="flex items-center gap-2">
-          <span className="rounded-lg bg-brown px-2 py-0.5 text-xs font-bold text-white">{p ? "지문" : "과제"}</span>
+          <span className="rounded-lg bg-leaf px-2 py-0.5 text-xs font-bold text-white">{p ? "지문" : "과제"}</span>
           <span className="font-display text-[19px] text-brown-dark">
             {p ? `「${p.title}」` : "이번 과제"}
             {p?.author && <span className="ml-1.5 font-sans text-[13px] text-muted">{p.author}</span>}

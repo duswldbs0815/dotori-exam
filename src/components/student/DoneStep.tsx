@@ -21,7 +21,7 @@ export function DoneStep({ name, used, info }: { name: string; used: PerItem; in
       <div className="grid w-full gap-2.5" style={{ gridTemplateColumns: `repeat(${stats.length}, minmax(0, 1fr))` }}>
         {stats.map(([v, l]) => (
           <div key={l} className="rounded-2xl bg-cream-3 px-1.5 py-3.5">
-            <div className="font-display text-[26px] text-brown">{v}</div>
+            <div className="font-display text-[26px] text-leaf">{v}</div>
             <div className="text-xs text-sub">{l}</div>
           </div>
         ))}

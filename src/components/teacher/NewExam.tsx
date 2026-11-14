@@ -1,16 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { caseToSuggestion, findCase } from "@/lib/community";
+import { EXAM_CONFIG } from "@/lib/exam-config";
 import { api, ApiError } from "@/lib/api-client";
-import { CLASS_IDS, classLabel, GRADES, SCHOOL_NAME, SUBJECTS } from "@/lib/school";
+import { CLASS_IDS, classLabel, GRADES } from "@/lib/school";
 import type { ExamDef, ExamSuggestion } from "@/lib/types";
 import { Acorn } from "../Acorn";
 import { Squirrel } from "../Squirrel";
 import { BackLink, btn, card, ErrorBox } from "../ui";
 import { DEFAULT_MAX, DEFAULT_SCALE, GRADE_SCALES } from "@/lib/grading";
 import type { GradeScale } from "@/lib/types";
-import { TeacherGate, TeacherShell } from "./TeacherShell";
+import { TeacherGate, TeacherShell, useTeacher } from "./TeacherShell";
 
 export function NewExam() {
   return (
@@ -28,11 +31,17 @@ const STEPS = ["과제 정하기", "자료 올리기", "AI 기준 확인", "배�
 
 /** 새 수행평가: 과목·과제 → 수업 자료 업로드 → AI가 기준 초안 제안 → 교사가 고쳐서 반에 배포 */
 function NewExamInner() {
+  const subject = useTeacher()?.subject ?? "국어"; // 담당 과목으로 고정
+  // 🔄 커뮤니티 사례에서 가져오기 (/teacher/new?case=…): 과제·기준을 채워 두고 AI 제안 없이 바로 기준 확인으로
+  const caseIdParam = useSearchParams().get("case");
+  const [fromCase] = useState(() => {
+    const c = findCase(caseIdParam);
+    return c && c.subject === subject ? c : null;
+  });
   const [step, setStep] = useState(0);
-  const [subject, setSubject] = useState("국어");
-  const [grade, setGrade] = useState(2);
-  const [unit, setUnit] = useState("");
-  const [task, setTask] = useState("");
+  const [grade, setGrade] = useState(fromCase?.grade ?? 2);
+  const [unit, setUnit] = useState(fromCase?.unit ?? "");
+  const [task, setTask] = useState(fromCase?.task ?? "");
   const [notes, setNotes] = useState("");
   const [classIds, setClassIds] = useState<string[]>([]);
   const [files, setFiles] = useState<File[]>([]);
@@ -110,7 +119,7 @@ function NewExamInner() {
 
   return (
     <TeacherShell>
-      <BackLink href="/teacher">← {SCHOOL_NAME} 전체</BackLink>
+      <BackLink href="/teacher/exams">← 수행평가 목록</BackLink>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-1">
           <span className="text-sm text-muted">새 수행평가</span>
@@ -121,7 +130,7 @@ function NewExamInner() {
             <li
               key={s}
               aria-current={i === step ? "step" : undefined}
-              className={`rounded-full px-3.5 py-1.5 text-[13px] ${i === step ? "bg-brown font-bold text-white" : i < step ? "bg-[#F3E6D3] text-sub" : "border border-line bg-white text-muted"}`}
+              className={`rounded-full px-3.5 py-1.5 text-[13px] ${i === step ? "bg-leaf font-bold text-white" : i < step ? "bg-leaf-bg text-sub" : "border border-line bg-white text-muted"}`}
             >
               {i + 1} {s}
             </li>
@@ -129,17 +138,18 @@ function NewExamInner() {
         </ol>
       </div>
       {error && <ErrorBox>{error}</ErrorBox>}
+      {fromCase && step === 0 && (
+        <p className="m-0 rounded-2xl bg-leaf-bg px-4 py-3 text-sm text-leaf">
+          커뮤니티에서 「{fromCase.title}」을(를) 가져왔어요. 과제를 우리 반에 맞게 고치고 배포할 반을 골라 주세요.
+        </p>
+      )}
 
       {step === 0 && (
         <section className={`${card} flex flex-col gap-5 p-8 max-sm:p-5`}>
           <div className="grid grid-cols-[1fr_1fr_2fr] gap-4 max-md:grid-cols-1">
             <label className="flex flex-col gap-1.5">
               <span className={label}>과목</span>
-              <select value={subject} onChange={(e) => setSubject(e.target.value)} className={input}>
-                {SUBJECTS.map((s) => (
-                  <option key={s}>{s}</option>
-                ))}
-              </select>
+              <span className={`${input} flex items-center bg-cream-2 text-sub`}>{subject} (담당 과목)</span>
             </label>
             <div className="flex flex-col gap-1.5">
               <span className={label}>학년</span>
@@ -153,7 +163,7 @@ function NewExamInner() {
                       setGrade(g);
                       setClassIds([]);
                     }}
-                    className={`min-h-12 flex-1 cursor-pointer rounded-2xl text-[15px] ${grade === g ? "border-2 border-brown bg-brown font-bold text-white" : "border border-line bg-paper text-sub"}`}
+                    className={`min-h-12 flex-1 cursor-pointer rounded-2xl text-[15px] ${grade === g ? "border-2 border-leaf bg-leaf font-bold text-white" : "border border-line bg-paper text-sub"}`}
                   >
                     중{g}
                   </button>
@@ -187,7 +197,7 @@ function NewExamInner() {
                     role="checkbox"
                     aria-checked={on}
                     onClick={() => setClassIds((ids) => (on ? ids.filter((x) => x !== c) : [...ids, c]))}
-                    className={`min-h-11 cursor-pointer rounded-full px-4 text-sm ${on ? "border-2 border-brown bg-cream-2 font-bold text-brown" : "border border-line bg-white text-sub"}`}
+                    className={`min-h-11 cursor-pointer rounded-full px-4 text-sm ${on ? "border-2 border-leaf bg-cream-2 font-bold text-leaf" : "border border-line bg-white text-sub"}`}
                   >
                     {on ? "✓ " : ""}
                     {classLabel(c)}
@@ -213,9 +223,24 @@ function NewExamInner() {
             />
           </label>
           <div className="flex justify-end">
-            <button type="button" disabled={!step1Ok} onClick={() => setStep(1)} className={btn.primary}>
-              다음: 자료 올리기
-            </button>
+            {fromCase ? (
+              <button
+                type="button"
+                disabled={!step1Ok}
+                onClick={() => {
+                  setDraft(caseToSuggestion(fromCase, [...EXAM_CONFIG.reflectionQuestions]));
+                  setStep(2);
+                  window.scrollTo({ top: 0 });
+                }}
+                className={btn.primary}
+              >
+                다음: 가져온 기준 확인
+              </button>
+            ) : (
+              <button type="button" disabled={!step1Ok} onClick={() => setStep(1)} className={btn.primary}>
+                다음: 자료 올리기
+              </button>
+            )}
           </div>
         </section>
       )}
@@ -228,7 +253,7 @@ function NewExamInner() {
           </div>
           <label className="flex cursor-pointer flex-col items-center gap-2 rounded-[22px] border-2 border-dashed border-line-2 bg-paper px-6 py-8 text-center">
             <Acorn size={32} />
-            <span className="font-display text-xl text-brown">파일 고르기</span>
+            <span className="font-display text-xl text-leaf">파일 고르기</span>
             <span className="text-sm text-muted">PDF · TXT · MD, 한 번에 5개, 모두 합쳐 4MB까지</span>
             <input
               type="file"
@@ -263,7 +288,7 @@ function NewExamInner() {
           {busy && (
             <div role="status" className="flex items-center gap-3 rounded-2xl bg-cream-3 px-4 py-3 text-sm text-sub">
               <Squirrel size={48} eats={1} />
-              과목과 자료를 읽고 개요 항목, 항목별 AI 범위, 권장 도토리를 정리하고 있어요.
+              과목과 자료를 읽고 평가 항목, 항목별 AI 범위, 권장 질문 수를 정리하고 있어요.
             </div>
           )}
         </section>
@@ -271,8 +296,13 @@ function NewExamInner() {
 
       {step === 2 && draft && (
         <div className="flex flex-col gap-4">
+          {draft.source === "community" && fromCase && (
+            <p className="m-0 rounded-2xl bg-leaf-bg px-4 py-3 text-sm text-leaf">
+              {fromCase.school} {fromCase.teacher} 선생님의 사례를 가져왔어요. 우리 반에 맞게 고쳐서 배포하세요.
+            </p>
+          )}
           {draft.source === "preset" && (
-            <p className="m-0 rounded-2xl bg-cream-2 px-4 py-3 text-sm text-brown">
+            <p className="m-0 rounded-2xl bg-cream-2 px-4 py-3 text-sm text-leaf">
               지금은 AI 연결이 없어 같은 과목의 예시 기준을 보여 드려요. 아래에서 그대로 고쳐 쓸 수 있어요.
             </p>
           )}
@@ -284,7 +314,7 @@ function NewExamInner() {
             <div className="flex gap-3 rounded-2xl bg-leaf-bg px-4 py-3.5">
               <Squirrel size={44} />
               <div className="flex flex-col gap-1">
-                <span className="text-sm font-bold text-leaf">AI가 이렇게 제안한 이유</span>
+                <span className="text-sm font-bold text-leaf">{draft.source === "community" ? "이 선생님이 이렇게 정한 이유" : "AI가 이렇게 제안한 이유"}</span>
                 <span className="text-sm leading-relaxed text-leaf-2">{draft.rationale || "과제와 자료를 바탕으로 정리했어요."}</span>
                 {draft.materials.length > 0 && (
                   <span className="text-xs text-leaf-2">읽은 자료: {draft.materials.map((m) => m.name).join(", ")}</span>
@@ -295,9 +325,9 @@ function NewExamInner() {
 
           <section className={`${card} flex flex-col gap-3 p-7 max-sm:p-5`}>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="m-0 font-display text-2xl font-normal">개요 항목과 AI 활용 범위</h2>
+              <h2 className="m-0 font-display text-2xl font-normal">평가 항목과 AI 활용 범위</h2>
               <span className="text-sm text-sub">
-                권장 도토리 합계 <b className="text-brown">{draft.itemGuides.reduce((a, g) => a + g.acorns, 0)}</b>개
+                권장 도토리 합계 <b className="text-leaf">{draft.itemGuides.reduce((a, g) => a + g.acorns, 0)}</b>개
               </span>
             </div>
             {draft.outlineItems.map((item, i) => (
@@ -332,7 +362,7 @@ function NewExamInner() {
                     >
                       −
                     </button>
-                    <span className="flex min-w-8 items-center justify-center gap-0.5 font-display text-2xl text-brown">{draft.itemGuides[i].acorns}</span>
+                    <span className="flex min-w-8 items-center justify-center gap-0.5 font-display text-2xl text-leaf">{draft.itemGuides[i].acorns}</span>
                     <button
                       type="button"
                       aria-label="하나 늘리기"
@@ -364,7 +394,7 @@ function NewExamInner() {
           <section className={`${card} flex flex-col gap-3 p-7 max-sm:p-5`}>
             <div className="flex flex-col gap-1">
               <h2 className="m-0 font-display text-2xl font-normal">채점 단계</h2>
-              <span className="text-[13px] text-muted">학생 리포트에서 개요 항목마다 이 단계로 채점해요. 채점하면서 언제든 바꿀 수 있어요.</span>
+              <span className="text-[13px] text-muted">학생 리포트에서 평가 항목마다 이 단계로 채점해요. 채점하면서 언제든 바꿀 수 있어요.</span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {GRADE_SCALES.map((s) => (
@@ -373,7 +403,7 @@ function NewExamInner() {
                   type="button"
                   aria-pressed={scale === s.id}
                   onClick={() => setScale(s.id)}
-                  className={`min-h-10 cursor-pointer rounded-full px-4 text-[14px] font-bold ${scale === s.id ? "border-0 bg-brown text-white" : "border border-line-3 bg-white text-sub"}`}
+                  className={`min-h-10 cursor-pointer rounded-full px-4 text-[14px] font-bold ${scale === s.id ? "border-0 bg-leaf text-white" : "border border-line-3 bg-white text-sub"}`}
                 >
                   {s.label}
                   {s.levels && s.id !== "pf" && s.id !== "3" ? <span className="ml-1.5 font-normal opacity-70">({s.levels.join("·")})</span> : null}
@@ -389,19 +419,9 @@ function NewExamInner() {
             </div>
           </section>
 
-          <section className={`${card} flex flex-col gap-3 p-7 max-sm:p-5`}>
-            <h2 className="m-0 font-display text-2xl font-normal">성찰 질문</h2>
-            {draft.reflectionQuestions.map((q, i) => (
-              <label key={i} className="flex items-start gap-3">
-                <span className="mt-2.5 font-display text-xl text-nut">{i + 1}</span>
-                <textarea rows={2} value={q} onChange={(e) => setList("reflectionQuestions", i, e.target.value)} className={`${area} text-sm`} />
-              </label>
-            ))}
-          </section>
-
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <button type="button" onClick={() => setStep(1)} className={btn.secondary}>
-              자료 다시 올리기
+            <button type="button" onClick={() => setStep(fromCase ? 0 : 1)} className={btn.secondary}>
+              {fromCase ? "과제 다시 보기" : "자료 다시 올리기"}
             </button>
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-sm text-sub">{classIds.map(classLabel).join(", ")}에 배포</span>

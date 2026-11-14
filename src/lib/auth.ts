@@ -1,8 +1,9 @@
-// 서버 전용: 교사 코드 로그인 (해커톤용 간이 인증)
+// 서버 전용: 교사 계정 로그인 (과목 담당 교사, 해커톤용 가상 계정)
 // 실제 도입 시에는 슈퍼스쿨 계정 로그인으로 바꿉니다.
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { fail } from "./http";
+import { findTeacher, type Teacher } from "./teachers";
 
 /** https로 들어온 요청이면 쿠키에 Secure 표시. (시연 때 http://192.168.x.x 로 접속해도 로그인되게) */
 async function isHttps(): Promise<boolean> {
@@ -12,27 +13,34 @@ async function isHttps(): Promise<boolean> {
 export const TEACHER_COOKIE = "dotori_teacher";
 const MAX_AGE = 60 * 60 * 12; // 12시간
 
+/** 쿠키 서명용 서버 비밀값 (환경 변수 TEACHER_CODE를 그대로 씀) */
 function teacherCode(): string {
   const code = process.env.TEACHER_CODE;
   if (!code) throw new Error("환경 변수 TEACHER_CODE 가 비어 있습니다 (.env.local 확인)");
   return code;
 }
 
-/** 쿠키에 넣는 값: "만료시각.서명". 교사 코드로 서명해서 코드를 모르면 만들 수 없고, 시간이 지나면 안 통함 */
-function sign(exp: number): string {
-  return createHmac("sha256", teacherCode()).update(`dotori-teacher-v2:${exp}`).digest("hex");
+/** 쿠키에 넣는 값: "교사아이디.만료시각.서명". 서버 비밀값으로 서명해서 위조할 수 없고, 시간이 지나면 안 통함 */
+function sign(teacherId: string, exp: number): string {
+  return createHmac("sha256", teacherCode()).update(`dotori-teacher-v3:${teacherId}:${exp}`).digest("hex");
 }
 
-function token(): string {
+function token(teacherId: string): string {
   const exp = Date.now() + MAX_AGE * 1000;
-  return `${exp}.${sign(exp)}`;
+  return `${encodeURIComponent(teacherId)}.${exp}.${sign(teacherId, exp)}`;
 }
 
-function validToken(v: string): boolean {
-  const [expStr, sig] = v.split(".");
+function teacherFromToken(v: string): Teacher | null {
+  // 아이디에 "."이 들어가므로 뒤에서부터 나눔
+  const parts = v.split(".");
+  const sig = parts.pop();
+  const expStr = parts.pop();
+  const idEnc = parts.join(".");
   const exp = Number(expStr);
-  if (!Number.isFinite(exp) || exp <= Date.now() || !sig) return false;
-  return same(sig, sign(exp));
+  if (!idEnc || !Number.isFinite(exp) || exp <= Date.now() || !sig) return null;
+  const id = decodeURIComponent(idEnc);
+  if (!same(sig, sign(id, exp))) return null;
+  return findTeacher(id);
 }
 
 function same(a: string, b: string) {
@@ -41,12 +49,8 @@ function same(a: string, b: string) {
   return x.length === y.length && timingSafeEqual(x, y);
 }
 
-export function checkCode(code: unknown): boolean {
-  return typeof code === "string" && same(code, teacherCode());
-}
-
-export async function setTeacherCookie() {
-  (await cookies()).set(TEACHER_COOKIE, token(), {
+export async function setTeacherCookie(teacherId: string) {
+  (await cookies()).set(TEACHER_COOKIE, token(teacherId), {
     httpOnly: true,
     sameSite: "lax",
     secure: await isHttps(),
@@ -59,14 +63,26 @@ export async function clearTeacherCookie() {
   (await cookies()).delete(TEACHER_COOKIE);
 }
 
-export async function isTeacher(): Promise<boolean> {
+/** 로그인한 교사 (없거나 위조·만료면 null) */
+export async function getTeacher(): Promise<Teacher | null> {
   const v = (await cookies()).get(TEACHER_COOKIE)?.value;
-  return typeof v === "string" && validToken(v);
+  return typeof v === "string" ? teacherFromToken(v) : null;
 }
 
-/** 교사가 아니면 401 */
-export async function requireTeacher() {
-  if (!(await isTeacher())) fail(401, "교사 코드로 로그인해 주세요.");
+export async function isTeacher(): Promise<boolean> {
+  return (await getTeacher()) !== null;
+}
+
+/** 교사가 아니면 401. 로그인한 교사를 돌려줌 */
+export async function requireTeacher(): Promise<Teacher> {
+  const t = await getTeacher();
+  if (!t) fail(401, "교사 계정으로 로그인해 주세요.");
+  return t;
+}
+
+/** 이 수행평가가 로그인한 교사 과목이 아니면 404 (있는지 없는지도 숨김) */
+export function requireSubject(t: Teacher, exam: { subject: string }) {
+  if (exam.subject !== t.subject) fail(404, "응시 기록이 없어요.");
 }
 
 // ── 학생 열쇠 ──────────────────────────────────────────────

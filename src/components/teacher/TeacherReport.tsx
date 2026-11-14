@@ -115,7 +115,7 @@ export function TeacherReport() {
   if (status === "error" || !data || !view)
     return (
       <TeacherShell>
-        <Link href="/teacher" className="text-sm text-brown">← 학교 전체</Link>
+        <Link href="/teacher/exams" className="text-sm text-leaf">← 수행평가 목록</Link>
         <ErrorBox>{error ?? "리포트를 불러오지 못했어요."}</ErrorBox>
       </TeacherShell>
     );
@@ -138,7 +138,7 @@ export function TeacherReport() {
         aria-label={`질문 ${q.acornNo} 보기`}
         aria-expanded={on}
         onClick={() => openQ(qi)}
-        className={`mx-0.5 ml-1 inline-flex h-[22px] w-[22px] cursor-pointer items-center justify-center rounded-full border-0 align-[2px] font-display text-[13px] text-white ${on ? "bg-brown shadow-[0_0_0_3px_#F6D7B3]" : "bg-nut"}`}
+        className={`mx-0.5 ml-1 inline-flex h-[22px] w-[22px] cursor-pointer items-center justify-center rounded-full border-0 align-[2px] font-display text-[13px] text-white ${on ? "bg-leaf shadow-[0_0_0_3px_#F6D7B3]" : "bg-nut"}`}
       >
         {q.acornNo}
       </button>
@@ -148,7 +148,7 @@ export function TeacherReport() {
   return (
     <TeacherShell>
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <Link href={backHref} className="text-sm text-brown">{backLabel}</Link>
+        <Link href={backHref} className="text-sm text-leaf">{backLabel}</Link>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => window.print()} className="min-h-10 cursor-pointer rounded-full border border-line-3 bg-white px-4 text-[13px] font-bold text-brown-dark">
             PDF로 저장
@@ -179,7 +179,7 @@ export function TeacherReport() {
             [`${view.counts.ai} / ${data.sentences.length}`, "AI 답 활용 문장"],
           ].map(([v, l]) => (
             <div key={l} className="flex min-w-[88px] flex-col items-center rounded-2xl border border-line bg-white px-4 py-2.5">
-              <span className={`font-display text-2xl ${l === "차단" && data.blockedCount > 0 ? "text-alert" : "text-brown"}`}>{v}</span>
+              <span className={`font-display text-2xl ${l === "차단" && data.blockedCount > 0 ? "text-alert" : "text-leaf"}`}>{v}</span>
               <span className="text-xs text-muted">{l}</span>
             </div>
           ))}
@@ -256,8 +256,8 @@ export function TeacherReport() {
             </ol>
           </section>
 
-          <section aria-label="도토리 목표와 사용" className={`${card} flex flex-col gap-2.5 p-[22px]`}>
-            <h2 className="m-0 font-display text-xl font-normal">도토리 목표와 사용</h2>
+          <section aria-label="항목별 질문" className={`${card} flex flex-col gap-2.5 p-[22px]`}>
+            <h2 className="m-0 font-display text-xl font-normal">{data.acorns.planned ? "도토리 목표와 사용" : "항목별 질문"}</h2>
             {SHORT_ITEMS.map((label, i) => {
               const p = data.acorns.planned?.[i] ?? 0;
               const u = data.acorns.used[i];
@@ -265,12 +265,12 @@ export function TeacherReport() {
               return (
                 <div key={label} className="flex items-center gap-3 text-sm">
                   <span className="w-24 flex-none text-sub">{label}</span>
-                  <div className="relative h-3 flex-1 rounded-full bg-[#F3E6D3]">
+                  <div className="relative h-3 flex-1 rounded-full bg-leaf-bg">
                     <div className="absolute inset-y-0 left-0 rounded-full border-2 border-dashed border-nut" style={{ width: `${(p / max) * 100}%` }} />
-                    <div className={`absolute inset-y-0.5 left-0 rounded-full ${u > p ? "bg-brown" : "bg-nut"}`} style={{ width: `${(u / max) * 100}%` }} />
+                    <div className={`absolute inset-y-0.5 left-0 rounded-full ${u > p ? "bg-leaf" : "bg-nut"}`} style={{ width: `${(u / max) * 100}%` }} />
                   </div>
                   <span className="w-16 flex-none text-right text-xs text-muted">
-                    {u} / 목표 {p}
+                    {data.acorns.planned ? `${u} / 목표 ${p}` : `${u}번`}
                   </span>
                 </div>
               );
@@ -283,6 +283,7 @@ export function TeacherReport() {
 
       <Timelapse ref={lapse} data={data.timelapse} questions={data.questions} />
 
+      {(data.outline || data.reflection?.some((r) => r.trim())) && (
       <section aria-label="개요와 성찰지" className={`${card} grid grid-cols-2 gap-6 px-9 py-7 max-md:grid-cols-1 max-sm:px-5`}>
         <div className="flex flex-col gap-3">
           <h2 className="m-0 font-display text-xl font-normal">개요</h2>
@@ -317,6 +318,7 @@ export function TeacherReport() {
           )}
         </div>
       </section>
+      )}
     </TeacherShell>
   );
 }
@@ -325,16 +327,16 @@ function QuestionItem({ q, open, onToggle, labels }: { q: ReportQuestion; open: 
   return (
     <div className={`rounded-2xl border ${open ? "border-nut bg-cream-3" : "border-line bg-white"}`}>
       <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full cursor-pointer items-start gap-2.5 border-0 bg-transparent px-3.5 py-3 text-left">
-        <span className={`flex h-6 w-6 flex-none items-center justify-center rounded-full font-display text-[13px] text-white ${open ? "bg-brown" : "bg-nut"}`}>{q.acornNo}</span>
+        <span className={`flex h-6 w-6 flex-none items-center justify-center rounded-full font-display text-[13px] text-white ${open ? "bg-leaf" : "bg-nut"}`}>{q.acornNo}</span>
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="text-sm font-bold leading-normal">{q.question}</span>
           <span className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
             {hhmm(q.time)} · {labels[q.outlineItem - 1]}
-            {q.type && <span className="rounded-full bg-[#F3E6D3] px-2 py-0.5 text-sub">{q.type}</span>}
+            {q.type && <span className="rounded-full bg-leaf-bg px-2 py-0.5 text-sub">{q.type}</span>}
             {q.stage && <span className="rounded-full border border-line-3 px-2 py-0.5 text-sub">{q.stage}</span>}
           </span>
         </span>
-        <span className="flex-none text-xs text-brown">{open ? "접기" : "열기"}</span>
+        <span className="flex-none text-xs text-leaf">{open ? "접기" : "열기"}</span>
       </button>
       {open && (
         <div className="flex flex-col gap-3 px-3.5 pb-3.5 text-sm leading-relaxed">
@@ -437,9 +439,9 @@ function SendDialog({ name, exam, onClose }: { name: string; exam: string; onClo
                   role="checkbox"
                   aria-checked={items[k]}
                   onClick={() => setItems((s) => ({ ...s, [k]: !s[k] }))}
-                  className={`flex cursor-pointer items-start gap-3 rounded-2xl border-2 px-4 py-3 text-left ${items[k] ? "border-brown bg-cream-3" : "border-line bg-white"}`}
+                  className={`flex cursor-pointer items-start gap-3 rounded-2xl border-2 px-4 py-3 text-left ${items[k] ? "border-leaf bg-cream-3" : "border-line bg-white"}`}
                 >
-                  <span className={`mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-md border-2 border-brown text-xs font-bold text-white ${items[k] ? "bg-brown" : "bg-white"}`}>
+                  <span className={`mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-md border-2 border-leaf text-xs font-bold text-white ${items[k] ? "bg-leaf" : "bg-white"}`}>
                     {items[k] ? "✓" : ""}
                   </span>
                   <span className="flex flex-col gap-0.5">

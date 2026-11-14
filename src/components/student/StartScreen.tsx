@@ -69,7 +69,7 @@ export function StartScreen() {
       </Link>
       <div className="flex items-center gap-2">
         {who && <Pill>{who}</Pill>}
-        <Link href="/me" className="rounded-full border border-line bg-white px-3.5 py-[7px] text-[13px] font-bold text-brown no-underline">
+        <Link href="/me" className="rounded-full border border-line bg-white px-3.5 py-[7px] text-[13px] font-bold text-leaf no-underline">
           내 학습 기록
         </Link>
       </div>
@@ -109,7 +109,7 @@ export function StartScreen() {
       <main className="flex flex-wrap items-stretch gap-7">
         <section className={`${card} flex min-w-0 flex-[999_1_560px] flex-col gap-6 p-10 max-sm:p-6`}>
           <div className="flex flex-col gap-2">
-            <span className="text-[15px] font-bold text-brown">
+            <span className="text-[15px] font-bold text-leaf">
               {SCHOOL_NAME} · {classLabel(classId)} · 오늘의 수행평가{exam ? ` · ${exam.subject}` : ""}
             </span>
             <h1 className="m-0 font-display text-5xl font-normal leading-tight max-sm:text-4xl">
@@ -143,23 +143,22 @@ export function StartScreen() {
                     role="radio"
                     aria-checked={e.id === examId}
                     onClick={() => setExamId(e.id)}
-                    className={`flex cursor-pointer flex-col items-start gap-1 rounded-2xl border-2 px-4 py-3 text-left transition ${e.id === examId ? "border-brown bg-cream-3" : "border-line bg-white hover:border-line-2"}`}
+                    className={`flex cursor-pointer flex-col items-start gap-1 rounded-2xl border-2 px-4 py-3 text-left transition ${e.id === examId ? "border-leaf bg-cream-3" : "border-line bg-white hover:border-line-2"}`}
                   >
-                    <span className="text-[12px] font-bold text-brown">{e.subject}</span>
+                    <span className="text-[12px] font-bold text-leaf">{e.subject}</span>
                     <span className="text-[15px] font-bold leading-snug text-ink">{e.title}</span>
                   </button>
                 ))}
               </div>
             </div>
           )}
-          <ol className="m-0 grid list-none grid-cols-3 gap-3 p-0 max-sm:grid-cols-1">
+          <ol className="m-0 grid list-none grid-cols-2 gap-3 p-0 max-sm:grid-cols-1">
             {[
-              ["1 개요", "네 칸에 생각 먼저 적기"],
-              ["2 글쓰기", "쓰다가 도토리로 질문"],
-              ["3 성찰지", "내 질문 돌아보기"],
+              ["수행평가", "과제·지문을 보며 바로 내 글 쓰기"],
+              ["AI 질문", "막히면 문장을 드래그해서 질문"],
             ].map(([t, d]) => (
               <li key={t} className="flex flex-col gap-1 rounded-[18px] bg-cream-2 p-4">
-                <span className="font-display text-[22px] text-brown">{t}</span>
+                <span className="font-display text-[22px] text-leaf">{t}</span>
                 <span className="text-sm text-sub">{d}</span>
               </li>
             ))}
@@ -221,11 +220,11 @@ export function StartScreen() {
               </svg>
               <div className="flex flex-[1_1_220px] flex-col gap-1.5">
                 <span className="flex items-center gap-2 text-[17px] font-bold">
-                  본인 확인 <span className="rounded-full bg-cream-2 px-2.5 py-0.5 text-xs text-brown">확인 전</span>
+                  본인 확인 <span className="rounded-full bg-cream-2 px-2.5 py-0.5 text-xs text-leaf">확인 전</span>
                 </span>
                 <span className="text-sm text-sub">시험 전에 페이스페이로 응시자 본인을 확인해요.</span>
               </div>
-              <button type="submit" disabled={!idOk || !nameOk || !exam} className={`${btn.secondary} border-2 border-brown text-brown`}>
+              <button type="submit" disabled={!idOk || !nameOk || !exam} className={`${btn.secondary} border-2 border-leaf text-leaf`}>
                 본인 확인하기
               </button>
             </div>
@@ -241,13 +240,13 @@ export function StartScreen() {
             </div>
             <ol className="m-0 flex list-none flex-col gap-3.5 p-0 text-[15px] leading-relaxed">
               {[
-                "개요를 쓰면서 항목마다 도토리를 몇 개 쓸지 목표를 정해요.",
-                "글을 쓰다 막히는 부분을 드래그해서 질문해요. 질문 하나에 도토리 하나예요.",
-                "목표보다 많이 써도 괜찮아요. 계획과 실제는 성찰지에서 다시 봐요.",
+                "글을 쓰다 막히는 부분을 드래그해서 AI 질문 탭에서 물어봐요.",
+                "AI는 답을 대신 써 주지 않고, 뜻·근거·방향을 알려 줘요.",
+                "질문할 때마다 다람쥐가 도토리를 먹어요. 다 쓰면 제출!",
                 "“대신 써 줘”는 받지 않아요. 도토리도 줄지 않아요.",
               ].map((t, i) => (
                 <li key={t} className="flex gap-3">
-                  <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-cream-2 font-display text-brown">{i + 1}</span>
+                  <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-cream-2 font-display text-leaf">{i + 1}</span>
                   <span>{t}</span>
                 </li>
               ))}
@@ -317,10 +316,10 @@ function FaceCheck(props: {
       <div className="flex min-w-0 flex-[1_1_340px] flex-col gap-5">
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center gap-2.5">
-            <span className="text-sm font-bold text-brown">페이스페이 본인 확인</span>
+            <span className="text-sm font-bold text-leaf">페이스페이 본인 확인</span>
             <span className="flex gap-1" aria-hidden="true">
               {[0, 1, 2].map((i) => (
-                <span key={i} className={`h-2 rounded-full ${i === stepIdx ? "w-7 bg-brown" : i < stepIdx ? "w-2 bg-brown" : "w-2 bg-line-3"}`} />
+                <span key={i} className={`h-2 rounded-full ${i === stepIdx ? "w-7 bg-leaf" : i < stepIdx ? "w-2 bg-leaf" : "w-2 bg-line-3"}`} />
               ))}
             </span>
           </div>
@@ -352,7 +351,7 @@ function FaceCheck(props: {
         {phase === "scan" && (
           <>
             <div className="flex flex-col gap-2">
-              <div className="h-3 overflow-hidden rounded-md bg-[#F3E6D3]" aria-hidden="true">
+              <div className="h-3 overflow-hidden rounded-md bg-leaf-bg" aria-hidden="true">
                 <div className="h-3 rounded-md bg-nut" style={{ animation: "dotori-fill 2.4s linear infinite" }} />
               </div>
               <span className="text-[15px] text-sub">움직이지 말고 화면을 봐 주세요. 2~3초면 끝나요.</span>
@@ -364,7 +363,7 @@ function FaceCheck(props: {
                 <button type="button" onClick={() => props.onResult(false)} className={`${btn.secondary} min-h-11 border-[#EBB0B0] text-del`}>인식 실패</button>
               </div>
             </div>
-            <button type="button" onClick={props.onBack} className="w-fit cursor-pointer border-0 bg-transparent p-0 text-sm text-brown underline">취소</button>
+            <button type="button" onClick={props.onBack} className="w-fit cursor-pointer border-0 bg-transparent p-0 text-sm text-leaf underline">취소</button>
           </>
         )}
 

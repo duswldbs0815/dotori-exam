@@ -65,7 +65,7 @@ export function MyPage() {
             <Brand subtitle="내 학습 기록" />
           </Link>
           <nav className="flex items-center gap-2">
-            <Link href="/start" className="rounded-full bg-brown px-4 py-2 text-[15px] font-bold text-white no-underline">
+            <Link href="/start" className="rounded-full bg-leaf px-4 py-2 text-[15px] font-bold text-white no-underline">
               시험 시작
             </Link>
             {data && (
@@ -204,7 +204,7 @@ function Dashboard({ data, equipped, setEquipped }: { data: MyPageResponse; equi
               [chars.toLocaleString(), "쓴 글자"],
             ].map(([v, l]) => (
               <div key={l} className="flex flex-col items-center gap-0.5 rounded-[22px] border border-line bg-white px-2 py-4">
-                <span className="font-display text-[28px] text-brown">{v}</span>
+                <span className="font-display text-[28px] text-leaf">{v}</span>
                 <span className="text-[13px] text-sub">{l}</span>
               </div>
             ))}
@@ -252,7 +252,7 @@ function Dashboard({ data, equipped, setEquipped }: { data: MyPageResponse; equi
               ))}
             </div>
             <p className="m-0 text-[12px] leading-relaxed text-muted">
-              성장 도토리는 계획 세우기, 끝까지 제출하기, 성찰지 쓰기, 계획에 가깝게 질문하기로 모여요. 질문 수가 많거나 적다고 깎이지 않아요.
+              성장 도토리는 AI에게 질문하기, 끝까지 제출하기, 대신 써 달라고 하지 않고 내 글로 끝내기로 모여요. 질문 수가 많거나 적다고 깎이지 않아요.
             </p>
           </div>
         </div>
@@ -305,7 +305,7 @@ function AttemptCard({ a, me }: { a: MyAttempt; me: { id: string; name: string }
         {a.submittedAt ? (
           <span className="rounded-full bg-leaf-bg px-3 py-1 text-[13px] font-bold text-leaf">제출 완료</span>
         ) : (
-          <button type="button" onClick={resume} disabled={busy} className={`${btn.secondary} min-h-10 border-brown text-brown`}>
+          <button type="button" onClick={resume} disabled={busy} className={`${btn.secondary} min-h-10 border-leaf text-leaf`}>
             {busy ? "여는 중…" : "이어 쓰기 →"}
           </button>
         )}
@@ -340,17 +340,17 @@ function AttemptCard({ a, me }: { a: MyAttempt; me: { id: string; name: string }
             {pts.parts.map((p) => (
               <li key={p.label} className="flex justify-between gap-2">
                 <span>{p.label}</span>
-                <span className="font-bold text-brown">+{p.pts}</span>
+                <span className="font-bold text-leaf">+{p.pts}</span>
               </li>
             ))}
-            {pts.parts.length === 0 && <li>개요를 쓰면 도토리가 모이기 시작해요.</li>}
+            {pts.parts.length === 0 && <li>질문하거나 제출하면 도토리가 모이기 시작해요.</li>}
           </ul>
         </div>
       </div>
 
       {a.questions.length > 0 && (
         <div className="flex flex-col gap-2 border-t border-dashed border-line pt-3">
-          <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="cursor-pointer self-start border-0 bg-transparent p-0 text-[14px] font-bold text-brown">
+          <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="cursor-pointer self-start border-0 bg-transparent p-0 text-[14px] font-bold text-leaf">
             {open ? "내 질문 접기 ▲" : `내 질문 ${a.questions.length}개 다시 보기 ▼`}
           </button>
           {open && (

@@ -5,12 +5,14 @@ import { CLASS_IDS, SCHOOL_NAME } from "@/lib/school";
 import { listAttempts, totalUsed } from "@/lib/store";
 import type { SchoolOverviewResponse } from "@/lib/types";
 
-// 교사 홈: 학년·반별로 열린 수행평가와 진행 상황
+// 교사 홈: 로그인한 교사 과목의 수행평가와 반별 진행 상황
 export const GET = handle(async () => {
-  await requireTeacher();
-  const [exams, recs] = await Promise.all([listExams(), listAttempts()]);
+  const teacher = await requireTeacher();
+  const [all, recs] = await Promise.all([listExams(), listAttempts()]);
+  const exams = all.filter((e) => e.subject === teacher.subject); // 담당 과목 수행평가만
   const res: SchoolOverviewResponse = {
     school: SCHOOL_NAME,
+    teacher,
     exams,
     classes: CLASS_IDS.map((classId) => ({
       classId,
