@@ -74,7 +74,13 @@ function NewExamInner() {
       form.set("notes", notes);
       form.set("pasted", pasted);
       files.forEach((f) => form.append("files", f));
-      setDraft(await api.suggestExam(form));
+      const sug = await api.suggestExam(form);
+      setDraft(sug);
+      // 채점기준표에 배점이 있으면 점수 채점 + 항목별 배점으로
+      if (sug.itemMax) {
+        setScale("points");
+        setItemMax(sug.itemMax);
+      }
       setStep(2);
       window.scrollTo({ top: 0 });
     } catch (e) {

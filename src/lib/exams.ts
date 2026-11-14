@@ -99,13 +99,14 @@ const SUGGEST_SYSTEM = `너는 중학교 교사가 수행평가를 준비하도�
 - 개요 항목은 정확히 4개. 학생이 글을 쓰기 전에 생각을 정리하는 단계 순서로.
 - 항목마다 help(AI가 도와도 되는 일)와 avoid(AI가 하지 않을 일)를 한 줄로, acorns(권장 도토리 수, 0~5)를 정한다.
 - 과제의 핵심 평가 요소(학생 스스로 해야 하는 판단)에는 도토리를 적게, 혼자 알기 어려운 지식·점검에는 많이 권한다.
-- 채점기준표가 있으면 그 평가 요소를 개요 항목과 이유에 반영한다.
+- 채점기준표가 있으면 그 평가 요소를 개요 항목과 이유에 반영한다. 평가 요소가 4개면 개요 항목을 그 평가 요소와 같은 순서·같은 뜻으로 맞춘다.
 - 성찰 질문 4개: 계획과 실제 비교, 도움이 된 질문, AI 답 검증, 다음 계획.
 - criteria: 개요 항목마다 채점 기준 한 줄을 '상: … / 중: … / 하: …' 형식으로. 학생 글에서 확인할 수 있는 모습으로 쓴다. 채점기준표가 있으면 그 내용을 그대로 옮긴다.
+- itemMax: 채점기준표에 평가 요소별 배점(점수)이 있으면 개요 항목 순서대로 정수 4개, 없으면 [].
 - 학생에게 쓸 말은 해요체, 교사에게 쓸 말(rationale)은 두 문장 이내.
 - 문자열 안에서 큰따옴표(")를 쓰지 말고 작은따옴표(')를 쓴다.
 JSON 형식 (itemGuides는 개요 항목 순서대로 정확히 4개):
-{"title":"","outlineItems":["","","",""],"shortItems":["","","",""],"itemGuides":[{"help":"","avoid":"","acorns":0},{"help":"","avoid":"","acorns":0},{"help":"","avoid":"","acorns":0},{"help":"","avoid":"","acorns":0}],"reflectionQuestions":["","","",""],"criteria":["","","",""],"rationale":"","blockedExamples":["",""]}`;
+{"title":"","outlineItems":["","","",""],"shortItems":["","","",""],"itemGuides":[{"help":"","avoid":"","acorns":0},{"help":"","avoid":"","acorns":0},{"help":"","avoid":"","acorns":0},{"help":"","avoid":"","acorns":0}],"reflectionQuestions":["","","",""],"criteria":["","","",""],"itemMax":[],"rationale":"","blockedExamples":["",""]}`;
 
 const MAX_MATERIAL_CHARS = 12000;
 
@@ -169,6 +170,9 @@ export async function suggestExam(input: {
       })),
       reflectionQuestions: out.reflectionQuestions,
       ...(Array.isArray(out.criteria) && out.criteria.length === 4 ? { criteria: out.criteria.map((c) => String(c ?? "").slice(0, 400)) } : {}),
+      ...(Array.isArray(out.itemMax) && out.itemMax.length === 4 && out.itemMax.every((m) => Number.isInteger(Number(m)) && Number(m) >= 1 && Number(m) <= 1000)
+        ? { itemMax: out.itemMax.map(Number) }
+        : {}),
       rationale: String(out.rationale ?? ""),
       blockedExamples: Array.isArray(out.blockedExamples) ? out.blockedExamples.map(String).slice(0, 3) : [],
       materials,

@@ -77,6 +77,8 @@ export type ExamSuggestion = {
   reflectionQuestions: string[];
   /** 🔄 항목별 채점 기준 초안 */
   criteria?: string[];
+  /** 🔄 채점기준표에 항목별 배점이 있으면 그대로 (점수 채점) */
+  itemMax?: number[];
   rationale: string;
   blockedExamples: string[];
   materials: { name: string; chars: number }[];
