@@ -275,7 +275,7 @@ function AttemptCard({ a, me }: { a: MyAttempt; me: { id: string; name: string }
   const [busy, setBusy] = useState(false);
   const tone = SUBJECT_TONE[a.subject] ?? "#8A4B12";
   const pts = pointsOf(a);
-  const max = Math.max(1, ...a.used, ...(a.plan ?? [0]));
+  const max = Math.max(1, ...a.used, ...a.recommended);
 
   async function resume() {
     setBusy(true);
@@ -313,9 +313,9 @@ function AttemptCard({ a, me }: { a: MyAttempt; me: { id: string; name: string }
 
       <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-5 max-md:grid-cols-1">
         <div className="flex flex-col gap-2">
-          <span className="text-[13px] font-bold text-sub">항목별 도토리 · 계획 vs 실제</span>
+          <span className="text-[13px] font-bold text-sub">항목별 도토리 · 선생님 권장 vs 내 질문</span>
           {a.labels.map((label, i) => {
-            const plan = a.plan?.[i] ?? 0;
+            const plan = a.recommended[i] ?? 0;
             const used = a.used[i];
             return (
               <div key={label} className="flex items-center gap-3 text-[13px]">
@@ -330,7 +330,7 @@ function AttemptCard({ a, me }: { a: MyAttempt; me: { id: string; name: string }
               </div>
             );
           })}
-          <span className="text-[11px] text-faint">점선 = 계획, 색 막대 = 실제 질문</span>
+          <span className="text-[11px] text-faint">점선 = 선생님 권장, 색 막대 = 내가 한 질문</span>
         </div>
         <div className="flex flex-col gap-2 rounded-2xl bg-cream-3 px-4 py-3">
           <span className="flex items-center gap-1.5 text-[13px] font-bold text-brown-dark">

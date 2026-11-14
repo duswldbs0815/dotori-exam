@@ -23,7 +23,7 @@ export const GET = handle(async () => {
         labels: [...shortLabels(exam)],
         startedAt: r.startedAt,
         submittedAt: r.submittedAt,
-        plan: r.acornPlan,
+        recommended: exam.itemGuides.map((g) => g.acorns || 0),
         used: usedPerItem(r),
         questionCount: r.questions.filter((q) => !q.blocked).length,
         blockedCount: r.questions.filter((q) => q.blocked).length,

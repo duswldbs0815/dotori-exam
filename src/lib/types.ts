@@ -283,7 +283,8 @@ export type MyAttempt = {
   labels: string[];
   startedAt: string;
   submittedAt: string | null;
-  plan: PerItem | null;
+  /** 🔄 11/14 선생님 권장 도토리 (항목별). 학생이 정하는 계획은 없앰 */
+  recommended: number[];
   used: PerItem;
   questionCount: number;
   blockedCount: number;

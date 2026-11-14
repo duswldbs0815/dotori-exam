@@ -23,12 +23,11 @@ export const LEVELS: { level: number; min: number; name: string }[] = [
 /** 수행평가 하나에서 얻은 점수와 이유 */
 export function pointsOf(a: MyAttempt): { total: number; parts: { label: string; pts: number }[] } {
   const parts: { label: string; pts: number }[] = [];
-  if (a.plan) parts.push({ label: "개요와 도토리 계획 세우기", pts: 5 });
   if (a.questionCount > 0) parts.push({ label: `AI에게 질문하기 (${a.questionCount}번)`, pts: Math.min(10, a.questionCount * 2) });
   if (a.submittedAt) {
     parts.push({ label: "끝까지 써서 제출", pts: 30 });
     if (a.reflectionDone >= 4) parts.push({ label: "성찰지 4문항 모두 쓰기", pts: 10 });
-    if (a.plan && a.used.every((u, i) => u <= a.plan![i] + 1)) parts.push({ label: "계획에 가깝게 질문하기", pts: 10 });
+    if (a.recommended.length && a.used.every((u, i) => u <= (a.recommended[i] ?? 0) + 1)) parts.push({ label: "선생님 권장 도토리에 맞춰 질문하기", pts: 10 });
     if (a.blockedCount === 0) parts.push({ label: "대신 써 달라는 요청 없이 끝내기", pts: 10 });
     if (a.questionCount > 0 && a.blockedCount === 0) parts.push({ label: "AI에게 묻고 내 글로 끝내기", pts: 10 });
   }
