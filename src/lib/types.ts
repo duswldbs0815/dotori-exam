@@ -282,4 +282,6 @@ export type ClassInsightsResponse = {
   generatedAt: string;
   /** ai: AI가 정리 / none: 질문이 너무 적어서 정리하지 않음 / error: AI 연결 실패 */
   source: "ai" | "none" | "error";
+  /** 저장된 결과를 먼저 보여 주는 중 (그사이 새 질문이 생겨 뒤에서 다시 만드는 중) */
+  stale?: boolean;
 };

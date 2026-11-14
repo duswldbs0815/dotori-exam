@@ -78,3 +78,5 @@ Vercel 같은 서버리스에서는 파일 저장이 유지되지 않으므로 *
 
 - API 키, `.env.local`, `.claude/settings.local.json`은 절대 커밋하지 않습니다.
 - 학생 화면 응답에는 분류·작성 경로·전후 비교를 넣지 않습니다.
+
+- 🔄 반 "다음 수업 단서" 저장 표: Supabase SQL Editor에서 `supabase/insights.sql` 한 번 실행 (`dotori_insights`). 없어도 동작하지만 서버가 바뀌면 다시 만들어요.

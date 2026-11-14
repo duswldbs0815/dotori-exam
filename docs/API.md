@@ -284,7 +284,9 @@
 `?classId=2-1&examId=kor2` — 한 반·한 수행평가의 학생 질문을 AI가 3~5개 묶음으로 정리하고, 다음 수업 제안을 붙입니다.
 - 학생 이름·학번은 AI에 보내지 않습니다 (질문 글, 개요 항목, 분류만).
 - `students`·`questions`(몇 명·몇 개)는 AI가 아니라 서버가 직접 셉니다.
-- 처음 한 번은 15~20초 걸리고, 같은 질문 묶음이면 30분 동안 저장된 결과를 바로 돌려줍니다 (새 질문이 생기면 다시 만듦).
+- 처음 한 번만 15~20초 걸리고, 결과는 저장해 둡니다 (Supabase `dotori_insights` 표 / 로컬은 `data/insights/`). 서버가 바뀌어도 바로 뜹니다.
+- 🔄 그사이 새 질문이 생기면 **저장된 결과를 바로 돌려주고**(`stale: true`) 새 결과는 뒤에서 만들어 저장합니다. 다음에 열면 바뀐 결과가 나옵니다.
+- 표 만들기: `supabase/insights.sql`을 SQL Editor에서 한 번 실행. 표가 없어도 동작은 하지만 서버 메모리에만 저장됩니다.
 - 질문이 3개 미만이면 `source: "none"`, AI 연결 실패면 `source: "error"` (화면은 카드를 숨기거나 안내 문구).
 
 응답
@@ -302,7 +304,8 @@
   ],
   "basedOn": { "students": 25, "questions": 146, "blocked": 10 },
   "generatedAt": "2026-11-14T00:00:00.000Z",
-  "source": "ai"
+  "source": "ai",
+  "stale": false
 }
 ```
 화면: `src/components/teacher/ClassInsights.tsx` (반 화면 `ClassView.tsx`에 한 줄로 들어감. 빼려면 그 한 줄만 지우면 됨)

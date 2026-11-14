@@ -1,5 +1,8 @@
 // 서버 전용: 반 전체 "수업 단서" — 학생들의 질문을 AI가 묶고, 다음 수업에 쓸 제안을 붙임.
 // 학생 이름·학번은 AI에 보내지 않음. 숫자(몇 명, 몇 번)는 AI가 아니라 서버가 셈.
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { dbGet, dbPut, hasDb } from "./db";
 import { callLLMJson } from "./llm";
 import type { AttemptRecord } from "./store";
 import type { ClassInsightsResponse, ExamDef, InsightCard } from "./types";
@@ -57,25 +60,56 @@ function mostCommon(values: string[]): string | null {
   return best;
 }
 
-// 같은 반·같은 시험·같은 질문 묶음이면 다시 만들지 않음 (서버 메모리, 30분)
-const cache = new Map<string, { at: number; res: ClassInsightsResponse }>();
-const TTL_MS = 30 * 60 * 1000;
+// ── 저장 ─────────────────────────────────────────────────
+// 한 번 만든 결과는 저장해 두고 바로 보여 줌. 서버가 바뀌어도(배포 환경) 다시 20초 기다리지 않게
+// Supabase가 있으면 dotori_insights 표, 없으면 data/insights/ JSON 파일. 서버 메모리에도 함께 둠.
+// 표가 아직 없으면(SQL 미실행) 메모리만 쓰고 계속 동작.
+type Saved = { sig: string; res: ClassInsightsResponse };
+const TABLE = "dotori_insights";
+const DIR = path.join(process.cwd(), "data", "insights");
+const memory = new Map<string, Saved>();
+const refreshing = new Set<string>();
+let dbWarned = false;
 
-export async function classInsights(recs: AttemptRecord[], exam: ExamDef, cacheKey: string): Promise<ClassInsightsResponse> {
-  const qs = collect(recs, exam);
-  const basedOn = {
-    students: new Set(qs.map((q) => q.student)).size,
-    questions: qs.filter((q) => !q.blocked).length,
-    blocked: qs.filter((q) => q.blocked).length,
-  };
+const fileOf = (key: string) => path.join(DIR, `${key.replace(/[^A-Za-z0-9_-]/g, "_")}.json`);
+
+async function loadSaved(key: string): Promise<Saved | null> {
+  const m = memory.get(key);
+  if (m) return m;
+  try {
+    const v = hasDb()
+      ? await dbGet<Saved>(TABLE, key)
+      : (JSON.parse(await readFile(fileOf(key), "utf8")) as Saved);
+    if (v?.res) memory.set(key, v);
+    return v?.res ? v : null;
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== "ENOENT") warnDb(e);
+    return null;
+  }
+}
+
+async function save(key: string, v: Saved) {
+  memory.set(key, v);
+  try {
+    if (hasDb()) await dbPut(TABLE, key, v);
+    else {
+      await mkdir(DIR, { recursive: true });
+      await writeFile(fileOf(key), JSON.stringify(v, null, 2), "utf8");
+    }
+  } catch (e) {
+    warnDb(e);
+  }
+}
+
+function warnDb(e: unknown) {
+  if (dbWarned) return;
+  dbWarned = true;
+  console.warn(`수업 단서 저장소를 쓰지 못해 서버 메모리에만 둡니다 (supabase/insights.sql 실행 필요할 수 있음): ${(e as Error).message}`);
+}
+
+// ── AI 정리 ───────────────────────────────────────────────
+async function generate(qs: Q[], exam: ExamDef, basedOn: ClassInsightsResponse["basedOn"]): Promise<ClassInsightsResponse> {
   const now = new Date().toISOString();
-  if (qs.length < MIN_QUESTIONS) return { cards: [], basedOn, generatedAt: now, source: "none" };
-
-  // 질문이 새로 생기면 키가 바뀌어 다시 만듦
-  const sig = `${cacheKey}|${qs.length}|${qs[0]?.time ?? ""}`;
-  const hit = cache.get(sig);
-  if (hit && Date.now() - hit.at < TTL_MS) return hit.res;
-
   const list = qs.map((q) => `[${q.id}] (${q.item}${q.blocked ? " · 차단" : q.type ? ` · ${q.type}` : ""}) ${q.text}`).join("\n");
   const user = `수행평가: ${exam.subject ? `${exam.subject} · ` : ""}${exam.title}
 개요 항목: ${(exam.shortItems?.length ? exam.shortItems : exam.outlineItems).join(" / ")}
@@ -83,7 +117,6 @@ export async function classInsights(recs: AttemptRecord[], exam: ExamDef, cacheK
 질문 목록 (학생 이름 없음):
 ${list}`;
 
-  let res: ClassInsightsResponse;
   try {
     const out = await callLLMJson<{ groups?: { title?: string; detail?: string; suggestion?: string; ids?: unknown }[] }>(
       [
@@ -119,11 +152,54 @@ ${list}`;
     }
     // 학생이 많이 겹친 묶음부터
     cards.sort((a, b) => b.students - a.students || b.questions - a.questions);
-    res = { cards: cards.slice(0, 5), basedOn, generatedAt: now, source: "ai" };
+    return { cards: cards.slice(0, 5), basedOn, generatedAt: now, source: "ai" };
   } catch (e) {
     console.error("수업 단서 AI 정리 실패", e);
-    return { cards: [], basedOn, generatedAt: now, source: "error" }; // 실패는 저장하지 않음
+    return { cards: [], basedOn, generatedAt: now, source: "error" };
   }
-  cache.set(sig, { at: Date.now(), res });
-  return res;
+}
+
+/**
+ * 반 수업 단서.
+ * - 저장된 결과가 지금 질문과 같으면 바로 돌려줌
+ * - 저장된 결과가 있지만 그사이 질문이 늘었으면, 저장된 것을 바로 보여 주고(stale) 새 결과는 refresh로 뒤에서 만듦
+ * - 저장된 게 없으면 지금 만듦 (처음 한 번 15~20초)
+ */
+export async function classInsights(
+  recs: AttemptRecord[],
+  exam: ExamDef,
+  key: string,
+): Promise<{ res: ClassInsightsResponse; refresh?: () => Promise<void> }> {
+  const qs = collect(recs, exam);
+  const basedOn = {
+    students: new Set(qs.map((q) => q.student)).size,
+    questions: qs.filter((q) => !q.blocked).length,
+    blocked: qs.filter((q) => q.blocked).length,
+  };
+  if (qs.length < MIN_QUESTIONS) return { res: { cards: [], basedOn, generatedAt: new Date().toISOString(), source: "none" } };
+
+  const sig = `${qs.length}|${qs[0]?.time ?? ""}`; // 질문이 새로 생기면 바뀜
+  const saved = await loadSaved(key);
+  if (saved && saved.sig === sig) return { res: saved.res };
+
+  const make = async () => {
+    const res = await generate(qs, exam, basedOn);
+    if (res.source === "ai") await save(key, { sig, res }); // 실패는 저장하지 않음
+    return res;
+  };
+
+  if (saved) {
+    const refresh = refreshing.has(key)
+      ? undefined
+      : async () => {
+          refreshing.add(key);
+          try {
+            await make();
+          } finally {
+            refreshing.delete(key);
+          }
+        };
+    return { res: { ...saved.res, stale: true }, refresh };
+  }
+  return { res: await make() };
 }

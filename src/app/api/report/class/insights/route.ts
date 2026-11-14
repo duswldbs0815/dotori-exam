@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { requireTeacher } from "@/lib/auth";
 import { getExam } from "@/lib/exams";
 import { fail, handle } from "@/lib/http";
@@ -16,5 +17,7 @@ export const GET = handle(async (req: Request) => {
   const exam = await getExam(examId);
   if (examId && exam.id !== examId) fail(404, "수행평가를 찾지 못했어요.");
   const recs = await listAttempts({ classId, examId: exam.id });
-  return Response.json(await classInsights(recs, exam, `${classId}:${exam.id}`));
+  const { res, refresh } = await classInsights(recs, exam, `${classId}__${exam.id}`);
+  if (refresh) after(refresh); // 저장된 걸 먼저 보내고, 새 질문을 반영한 결과는 뒤에서 만들어 저장
+  return Response.json(res);
 });

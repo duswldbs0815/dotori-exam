@@ -94,6 +94,7 @@ export function ClassInsights({ classId, examId }: { classId: string; examId: st
               ))}
             </ol>
             <p className="m-0 text-[12px] text-muted">
+              {data!.stale ? "새 질문을 반영해 다시 정리하는 중이에요. 잠시 뒤 새로고침하면 바뀌어요. " : ""}
               학생 이름 없이 질문만 AI에 보내 정리한 참고 자료예요. 몇 명·몇 개는 기록에서 직접 센 값이고, 수업 판단은 선생님이 해요.
             </p>
           </>
